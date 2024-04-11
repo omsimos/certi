@@ -11,7 +11,7 @@ export function EventForm() {
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    router.push(`/event?name=${event}`);
+    router.push(`/event/${event}`);
   };
 
   return (

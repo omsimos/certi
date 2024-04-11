@@ -7,7 +7,12 @@ export default async function Event({ params }: { params: { name: string } }) {
   const docSnap = await getDoc(docRef);
 
   if (docSnap.exists()) {
-    return <EventLanding eventDetails={docSnap.data() as EventDetails} />;
+    return (
+      <EventLanding
+        eventDetails={docSnap.data() as EventDetails}
+        eventName={params.name}
+      />
+    );
   } else {
     return (
       <EventLanding
