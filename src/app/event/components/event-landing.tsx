@@ -43,9 +43,8 @@ export default function EventLanding({
           message = "✅ Certificate found!";
           return;
         }
-
-        toast.success(message);
       });
+      toast(message);
     } catch (err: any) {
       toast.error(err.message);
     }
