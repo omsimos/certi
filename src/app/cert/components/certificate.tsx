@@ -2,7 +2,7 @@
 
 import { db } from "@/config/firebase";
 import { doc } from "firebase/firestore";
-import { useSearchParams } from "next/navigation";
+import { redirect, useSearchParams } from "next/navigation";
 import { useDocumentOnce } from "react-firebase-hooks/firestore";
 import Loading from "../loading";
 
@@ -24,7 +24,11 @@ export function Certificate() {
 
   const data = { ...value?.data(), id: value?.id } as Attendee;
 
-  if (loading) return <Loading />;
+  if (loading || !data) return <Loading />;
+
+  if (!certId || !eventName) {
+    redirect("/");
+  }
 
   return (
     <div className="text-center pt-40">
