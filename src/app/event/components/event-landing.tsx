@@ -22,7 +22,7 @@ export default function EventLanding({
   eventDetails,
   eventName,
 }: EventLandingProps) {
-  const { replace } = useRouter();
+  const { push } = useRouter();
   const [email, setEmail] = useState("john@doe.com");
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -39,7 +39,7 @@ export default function EventLanding({
       let message = "⚠️ Certificate Not Found";
       querySnapshot.forEach((doc) => {
         if (doc.data().email) {
-          replace(`/cert?event=${eventName}&id=${doc.id}`);
+          push(`/event/${eventName}/cert?id=${doc.id}`);
           message = "✅ Certificate found!";
           return;
         }

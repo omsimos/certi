@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { Certificate } from "./components/certificate";
+import { Certificate } from "../../components/certificate";
 
 function Fallback() {
   return <></>;
