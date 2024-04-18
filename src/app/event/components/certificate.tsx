@@ -1,21 +1,13 @@
 "use client";
 
 import { db } from "@/config/firebase";
-import { collection, doc, query } from "firebase/firestore";
+import { doc } from "firebase/firestore";
 import { usePathname, useSearchParams } from "next/navigation";
-import {
-  useCollectionOnce,
-  useDocumentOnce,
-} from "react-firebase-hooks/firestore";
-import Loading from "../[name]/cert/loading";
-import { Card, CardContent } from "@/components/ui/card";
+import { useDocumentOnce } from "react-firebase-hooks/firestore";
 
-type Attendee = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-};
+import { Card, CardContent } from "@/components/ui/card";
+import Loading from "../[name]/cert/loading";
+import Tilt from "react-parallax-tilt";
 
 type Event = {
   id: string;
@@ -23,6 +15,13 @@ type Event = {
   fullTitle: string;
   organizer: string;
   date: string;
+};
+
+type Attendee = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
 };
 
 export function Certificate() {
@@ -56,31 +55,33 @@ export function Certificate() {
 
   return (
     <div className="h-screen grid place-items-center container">
-      <Card className="relative max-w-screen-sm overflow-x-hidden border-none text-background bg-foreground">
-        <div className="h-16 w-16 bg-background absolute -left-10 top-1/2 -translate-y-1/2 rounded-full" />
-        <div className="h-16 w-16 bg-background absolute -right-10 top-1/2 -translate-y-1/2 rounded-full" />
-        <CardContent className="px-16 py-0 flex">
-          <div className="py-10 gap-20 flex flex-col">
-            <h3 className="text-4xl font-bold tracking-tighter">
-              {attendee.firstName} {attendee.lastName}
-            </h3>
-            <div>
-              <p>
-                Has successfully participated in{" "}
-                <span className="font-medium">{event.fullTitle}</span> by{" "}
-                {event.organizer} held on {event.date}.
-              </p>
-              <p className="text-xs mt-7 text-muted-foreground">
-                Powered by <span className="font-medium">OMSIMOS</span>
-              </p>
+      <Tilt>
+        <Card className="relative max-w-screen-sm overflow-x-hidden border-none text-background bg-foreground">
+          <div className="h-16 w-16 bg-background absolute -left-10 top-1/2 -translate-y-1/2 rounded-full" />
+          <div className="h-16 w-16 bg-background absolute -right-10 top-1/2 -translate-y-1/2 rounded-full" />
+          <CardContent className="px-16 py-0 flex">
+            <div className="py-10 gap-20 flex flex-col">
+              <h3 className="text-4xl font-bold tracking-tighter">
+                {attendee.firstName} {attendee.lastName}
+              </h3>
+              <div>
+                <p>
+                  Has successfully participated in{" "}
+                  <span className="font-medium">{event.fullTitle}</span> by{" "}
+                  {event.organizer} held on {event.date}.
+                </p>
+                <p className="text-xs mt-7 text-muted-foreground">
+                  Powered by <span className="font-medium">OMSIMOS</span>
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="rotate-270 transform [writingMode:vertical-rl] border-dotted border-l-2 pl-10 ml-10 flex justify-center text-xl">
-            {attendee.id}
-          </div>
-        </CardContent>
-      </Card>
+            <div className="rotate-270 transform [writingMode:vertical-rl] border-dotted border-l-2 pl-10 ml-10 flex justify-center text-xl">
+              {attendee.id}
+            </div>
+          </CardContent>
+        </Card>
+      </Tilt>
     </div>
   );
 }

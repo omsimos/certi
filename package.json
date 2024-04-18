@@ -23,6 +23,7 @@
     "react": "^18",
     "react-dom": "^18",
     "react-firebase-hooks": "^5.1.1",
+    "react-parallax-tilt": "^1.7.221",
     "sonner": "^1.4.41",
     "tailwind-merge": "^2.2.2",
     "tailwindcss-animate": "^1.0.7"
