@@ -5,6 +5,7 @@ import { doc } from "firebase/firestore";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useDocumentOnce } from "react-firebase-hooks/firestore";
 
+import { useCopyToClipboard } from "@/hooks/copy-to-clipboard";
 import { Card, CardContent } from "@/components/ui/card";
 import Loading from "../[name]/cert/loading";
 import Tilt from "react-parallax-tilt";
@@ -35,6 +36,8 @@ export function Certificate() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const certId = searchParams.get("id");
+
+  const [copiedText, copy] = useCopyToClipboard();
 
   const [attendeeValue, attendeeLoading] = useDocumentOnce(
     doc(db, `${pathname.split("/")[2]}/data/certificates/${certId}`)
@@ -86,9 +89,12 @@ export function Certificate() {
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <p className="[writingMode:vertical-rl] cursor-pointer rotate-270 transform text-center">
+                    <button
+                      onClick={() => copy(window.location.href.toString())}
+                      className="[writingMode:vertical-rl] rotate-270 transform text-center"
+                    >
                       {attendee.id}
-                    </p>
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent className="relative top-16">
                     <p>🔗 Copy URL to clipboard</p>
