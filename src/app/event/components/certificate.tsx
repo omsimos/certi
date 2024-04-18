@@ -9,6 +9,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import Loading from "../[name]/cert/loading";
 import Tilt from "react-parallax-tilt";
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 type Event = {
   id: string;
   title: string;
@@ -60,7 +67,7 @@ export function Certificate() {
           <div className="h-16 w-16 bg-background absolute -left-10 top-1/2 -translate-y-1/2 rounded-full" />
           <div className="h-16 w-16 bg-background absolute -right-10 top-1/2 -translate-y-1/2 rounded-full" />
           <CardContent className="px-16 py-0 flex">
-            <div className="py-10 gap-20 flex flex-col">
+            <div className="py-10 gap-12 flex flex-col">
               <h3 className="text-4xl font-bold tracking-tighter">
                 {attendee.firstName} {attendee.lastName}
               </h3>
@@ -75,9 +82,19 @@ export function Certificate() {
                 </p>
               </div>
             </div>
-
-            <div className="rotate-270 transform [writingMode:vertical-rl] border-dotted border-l-2 pl-10 ml-10 flex justify-center text-xl">
-              {attendee.id}
+            <div className="border-dotted border-l-2 pl-10 ml-10 flex justify-center text-xl">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <p className="[writingMode:vertical-rl] cursor-pointer rotate-270 transform text-center">
+                      {attendee.id}
+                    </p>
+                  </TooltipTrigger>
+                  <TooltipContent className="relative top-16">
+                    <p>🔗 Copy URL to clipboard</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </CardContent>
         </Card>
