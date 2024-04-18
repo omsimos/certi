@@ -23,7 +23,7 @@ export default function EventLanding({
   eventName,
 }: EventLandingProps) {
   const { push } = useRouter();
-  const [email, setEmail] = useState("john@doe.com");
+  const [email, setEmail] = useState("dale@ban.com");
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();

@@ -37,7 +37,7 @@ export function Certificate() {
   const searchParams = useSearchParams();
   const certId = searchParams.get("id");
 
-  const [copiedText, copy] = useCopyToClipboard();
+  const [_, copy] = useCopyToClipboard();
 
   const [attendeeValue, attendeeLoading] = useDocumentOnce(
     doc(db, `${pathname.split("/")[2]}/data/certificates/${certId}`)
@@ -85,19 +85,19 @@ export function Certificate() {
                 </p>
               </div>
             </div>
-            <div className="border-dotted border-l-2 pl-10 ml-10 flex justify-center text-xl">
+            <div className="border-dotted relative border-l-2 pl-10 ml-10 flex justify-center text-xl">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => copy(window.location.href.toString())}
-                      className="[writingMode:vertical-rl] rotate-270 transform text-center"
+                      className="w-7 [writingMode:vertical-rl] rotate-270 transform text-center"
                     >
-                      {attendee.id}
+                      {attendee.id ?? "Loading.."}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent className="relative top-16">
-                    <p>🔗 Copy URL to clipboard</p>
+                  <TooltipContent align="center" className="relative top-14">
+                    <p>Copy URL to Clipboard</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
