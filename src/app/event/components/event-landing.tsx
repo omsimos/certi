@@ -76,6 +76,7 @@ export default function EventLanding({
         }
       });
       toast(message);
+      setLoading(false);
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -83,6 +84,15 @@ export default function EventLanding({
 
   return (
     <main className="flex gap-20 lg:items-start pb-20 lg:pt-56 pt-36 container flex-col lg:flex-row justify-between items-center">
+      <div className="md:text-center lg:text-left text-left">
+        <h1 className="lg:text-7xl text-5xl md:text-6xl font-bold">
+          {eventDetails.title}
+        </h1>
+        <p className="md:text-xl text-lg text-muted-foreground mt-3 w-full md:w-3/4 mx-auto lg:mx-0 break-words hyphens-auto">
+          {eventDetails.description}
+        </p>
+      </div>
+
       <Card className="w-full max-w-sm">
         <CardHeader className="text-2xl font-semibold">Enter Email</CardHeader>
         <CardContent>
