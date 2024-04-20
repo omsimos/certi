@@ -10,7 +10,7 @@ export default async function Event({ params }: { params: { name: string } }) {
     return (
       <EventLanding
         eventDetails={docSnap.data() as EventDetails}
-        eventName={params.name}
+        eventCode={params.name}
       />
     );
   } else {
