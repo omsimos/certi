@@ -1,12 +1,27 @@
 "use client";
 
+import { z } from "zod";
 import { toast } from "sonner";
-import { FormEvent, useState } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { collection, getDocs, limit, query, where } from "firebase/firestore";
+import { useState } from "react";
 import { db } from "@/config/firebase";
+import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { collection, getDocs, limit, query, where } from "firebase/firestore";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Icons } from "@/components/icons";
+
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormMessage,
+} from "@/components/ui/form";
 
 export type EventDetails = {
   title: string;
@@ -15,22 +30,38 @@ export type EventDetails = {
 
 type EventLandingProps = {
   eventDetails: EventDetails;
-  eventName?: string;
+  eventCode?: string;
 };
+
+const formSchema = z.object({
+  email: z
+    .string()
+    .min(1, {
+      message: "This field has to be filled",
+    })
+    .email("This is not a valid email"),
+});
 
 export default function EventLanding({
   eventDetails,
-  eventName,
+  eventCode,
 }: EventLandingProps) {
   const { push } = useRouter();
-  const [email, setEmail] = useState("dale@ban.com");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "dale@ban.com",
+    },
+  });
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setLoading(true);
 
     const q = query(
-      collection(db, `${eventName}/data/certificates`),
-      where("email", "==", email),
+      collection(db, `${eventCode}/data/certificates`),
+      where("email", "==", values.email),
       limit(1)
     );
 
@@ -39,7 +70,7 @@ export default function EventLanding({
       let message = "⚠️ Certificate Not Found";
       querySnapshot.forEach((doc) => {
         if (doc.data().email) {
-          push(`/event/${eventName}/cert?id=${doc.id}`);
+          push(`/event/${eventCode}/cert?id=${doc.id}`);
           message = "✅ Certificate found!";
           return;
         }
@@ -48,27 +79,37 @@ export default function EventLanding({
     } catch (err: any) {
       toast.error(err.message);
     }
-  };
+  }
 
   return (
-    <main className="h-screen flex items-center pt-40 gap-10 flex-col">
-      <div className="text-center">
-        <h1 className="capitalize font-bold text-6xl"> {eventDetails.title}</h1>
-        <p className="text-muted-foreground mt-2">{eventDetails.description}</p>
-      </div>
-
-      <form
-        onSubmit={(e) => handleSubmit(e)}
-        className="flex w-full max-w-sm items-center space-x-2"
-      >
-        <Input
-          type="text"
-          placeholder="Event"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <Button type="submit">Visit</Button>
-      </form>
+    <main className="flex gap-20 lg:items-start pb-20 lg:pt-56 pt-36 container flex-col lg:flex-row justify-between items-center">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-2xl font-semibold">Enter Email</CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormMessage />
+                    <FormControl>
+                      <Input placeholder="shadcn" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Enter registered email address
+                    </FormDescription>
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? <Icons.spinner /> : "Get Certificate"}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </main>
   );
 }
