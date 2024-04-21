@@ -6,18 +6,14 @@ export default async function Event({ params }: { params: { name: string } }) {
   const docRef = doc(db, params.name, "data");
   const docSnap = await getDoc(docRef);
 
-  if (docSnap.exists()) {
-    return (
-      <EventLanding
-        eventDetails={docSnap.data() as EventDetails}
-        eventCode={params.name}
-      />
-    );
-  } else {
-    return (
-      <EventLanding
-        eventDetails={{ title: "404", description: "Event Not Found" }}
-      />
-    );
-  }
+  return (
+    <EventLanding
+      eventDetails={
+        docSnap.exists()
+          ? (docSnap.data() as EventDetails)
+          : ({ title: "404", description: "Event Not Found" } as EventDetails)
+      }
+      eventCode={params.name}
+    />
+  );
 }
