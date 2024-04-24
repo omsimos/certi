@@ -62,7 +62,7 @@ export default function EventLanding({
     const q = query(
       collection(db, `${eventCode}/data/certificates`),
       where("email", "==", values.email),
-      limit(1)
+      limit(1),
     );
 
     try {
@@ -83,12 +83,12 @@ export default function EventLanding({
   }
 
   return (
-    <main className="flex gap-20 lg:items-start pb-20 lg:pt-56 pt-36 container flex-col lg:flex-row justify-between items-center">
-      <div className="md:text-center lg:text-left text-left">
-        <h1 className="lg:text-7xl text-5xl md:text-6xl font-bold">
+    <main className="container flex flex-col items-center justify-between gap-20 pb-20 pt-36 lg:flex-row lg:items-start lg:pt-56">
+      <div className="text-left md:text-center lg:text-left">
+        <h1 className="text-5xl font-bold md:text-6xl lg:text-7xl">
           {eventDetails.title}
         </h1>
-        <p className="md:text-xl text-lg text-muted-foreground mt-3 w-full md:w-3/4 mx-auto lg:mx-0 break-words hyphens-auto">
+        <p className="mx-auto mt-3 w-full hyphens-auto break-words text-lg text-muted-foreground md:w-3/4 md:text-xl lg:mx-0">
           {eventDetails.description}
         </p>
       </div>

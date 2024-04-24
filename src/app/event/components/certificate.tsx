@@ -40,7 +40,7 @@ export function Certificate() {
   const [_, copy] = useCopyToClipboard();
 
   const [attendeeValue, attendeeLoading] = useDocumentOnce(
-    doc(db, `${pathname.split("/")[2]}/data/certificates/${certId}`)
+    doc(db, `${pathname.split("/")[2]}/data/certificates/${certId}`),
   );
 
   const attendee = {
@@ -49,7 +49,7 @@ export function Certificate() {
   } as Attendee;
 
   const [eventValue, eventLoading] = useDocumentOnce(
-    doc(db, `${pathname.split("/")[2]}/data`)
+    doc(db, `${pathname.split("/")[2]}/data`),
   );
 
   const event = { ...eventValue?.data(), id: eventValue?.id } as Event;
@@ -58,19 +58,19 @@ export function Certificate() {
 
   if (!attendee.email)
     return (
-      <div className="text-center pt-40">
-        <h3 className="capitalize font-bold text-6xl">Certificate not found</h3>
+      <div className="pt-40 text-center">
+        <h3 className="text-6xl font-bold capitalize">Certificate not found</h3>
       </div>
     );
 
   return (
-    <div className="h-screen grid place-items-center container">
+    <div className="container grid h-screen place-items-center">
       <Tilt>
-        <Card className="relative max-w-screen-sm overflow-x-hidden border-none text-background bg-foreground">
-          <div className="h-16 w-16 bg-background absolute -left-10 top-1/2 -translate-y-1/2 rounded-full hidden sm:block" />
-          <div className="h-16 w-16 bg-background absolute -right-10 top-1/2 -translate-y-1/2 rounded-full" />
-          <CardContent className="sm:px-16 px-0 py-0 flex flex-col sm:flex-row">
-            <div className="py-10 px-10 sm:px-0 gap-12 flex flex-col">
+        <Card className="relative max-w-screen-sm overflow-x-hidden border-none bg-foreground text-background">
+          <div className="absolute -left-10 top-1/2 hidden h-16 w-16 -translate-y-1/2 rounded-full bg-background sm:block" />
+          <div className="absolute -right-10 top-1/2 h-16 w-16 -translate-y-1/2 rounded-full bg-background" />
+          <CardContent className="flex flex-col px-0 py-0 sm:flex-row sm:px-16">
+            <div className="flex flex-col gap-12 px-10 py-10 sm:px-0">
               <h3 className="text-4xl font-bold tracking-tighter">
                 {attendee.firstName} {attendee.lastName}
               </h3>
@@ -80,18 +80,18 @@ export function Certificate() {
                   <span className="font-medium">{event.fullTitle}</span> by{" "}
                   {event.organizer} held on {event.date}.
                 </p>
-                <p className="text-xs mt-7 text-muted-foreground">
+                <p className="mt-7 text-xs text-muted-foreground">
                   Powered by <span className="font-medium">OMSIMOS</span>
                 </p>
               </div>
             </div>
-            <div className="border-dotted relative sm:border-l-2 sm:border-t-0 border-t-2 sm:pl-10 sm:ml-10 flex justify-center sm:text-xl text-lg py-10 sm:pb-0">
+            <div className="relative flex justify-center border-t-2 border-dotted py-10 text-lg sm:ml-10 sm:border-l-2 sm:border-t-0 sm:pb-0 sm:pl-10 sm:text-xl">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => copy(window.location.href.toString())}
-                      className="sm:w-7 sm:[writingMode:vertical-rl] md:rotate-270 md:transform sm:text-center text-left"
+                      className="md:rotate-270 text-left sm:w-7 sm:text-center sm:[writingMode:vertical-rl] md:transform"
                     >
                       {attendee.id ?? "Loading.."}
                     </button>

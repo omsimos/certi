@@ -57,7 +57,7 @@ export function EventForm() {
 
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerContent>
-          <div className="pt-7 pb-36 max-w-sm w-full mx-auto">
+          <div className="mx-auto w-full max-w-sm pb-36 pt-7">
             <DrawerHeader className="px-0">
               <DrawerTitle>Find Event</DrawerTitle>
               <DrawerDescription>Enter the event code</DrawerDescription>
@@ -87,7 +87,7 @@ const SearchEventForm = ({
   return (
     <form
       onSubmit={(e) => handleSubmit(e)}
-      className="flex w-full max-w-sm items-center gap-2 flex-col"
+      className="flex w-full max-w-sm flex-col items-center gap-2"
     >
       <Input
         type="text"
@@ -95,7 +95,7 @@ const SearchEventForm = ({
         value={event}
         onChange={(e) => setEvent(e.target.value)}
       />
-      <div className="flex flex-col gap-2 w-full">
+      <div className="flex w-full flex-col gap-2">
         <Button type="submit" className="w-full">
           Search
         </Button>

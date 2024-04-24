@@ -3,10 +3,10 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <main className="h-screen flex text-center items-center pt-40 gap-5 flex-col">
+    <main className="flex h-screen flex-col items-center gap-5 pt-40 text-center">
       <div>
-        <h1 className="capitalize font-bold text-6xl">Not Found</h1>
-        <p className="text-muted-foreground mt-2">
+        <h1 className="text-6xl font-bold capitalize">Not Found</h1>
+        <p className="mt-2 text-muted-foreground">
           Could not find requested resource
         </p>
       </div>
