@@ -67,10 +67,10 @@ export function Certificate() {
     <div className="h-screen grid place-items-center container">
       <Tilt>
         <Card className="relative max-w-screen-sm overflow-x-hidden border-none text-background bg-foreground">
-          <div className="h-16 w-16 bg-background absolute -left-10 top-1/2 -translate-y-1/2 rounded-full" />
+          <div className="h-16 w-16 bg-background absolute -left-10 top-1/2 -translate-y-1/2 rounded-full hidden sm:block" />
           <div className="h-16 w-16 bg-background absolute -right-10 top-1/2 -translate-y-1/2 rounded-full" />
-          <CardContent className="px-16 py-0 flex">
-            <div className="py-10 gap-12 flex flex-col">
+          <CardContent className="sm:px-16 px-0 py-0 flex flex-col sm:flex-row">
+            <div className="py-10 px-10 sm:px-0 gap-12 flex flex-col">
               <h3 className="text-4xl font-bold tracking-tighter">
                 {attendee.firstName} {attendee.lastName}
               </h3>
@@ -85,13 +85,13 @@ export function Certificate() {
                 </p>
               </div>
             </div>
-            <div className="border-dotted relative border-l-2 pl-10 ml-10 flex justify-center text-xl">
+            <div className="border-dotted relative sm:border-l-2 sm:border-t-0 border-t-2 sm:pl-10 sm:ml-10 flex justify-center sm:text-xl text-lg py-10 sm:pb-0">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       onClick={() => copy(window.location.href.toString())}
-                      className="w-7 [writingMode:vertical-rl] rotate-270 transform text-center"
+                      className="sm:w-7 sm:[writingMode:vertical-rl] md:rotate-270 md:transform sm:text-center text-left"
                     >
                       {attendee.id ?? "Loading.."}
                     </button>
