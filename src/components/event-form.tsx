@@ -19,10 +19,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 
 import useMediaQuery from "@/hooks/use-media-query";
+import { Icons } from "./icons";
 
 export function EventForm() {
   const [open, setOpen] = useState(false);
@@ -51,7 +51,7 @@ export function EventForm() {
   return (
     <>
       <div className="flex gap-3 [&>*]:px-10">
-        <Button onClick={() => setOpen(!open)}>Find Event</Button>
+        <Button onClick={() => setOpen(true)}>Find Event</Button>
         <Button variant="secondary">Setup Event</Button>
       </div>
 
@@ -79,15 +79,17 @@ const SearchEventForm = ({
 }) => {
   const router = useRouter();
   const [event, setEvent] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     router.push(`/event/${event}`);
+    setLoading(!loading);
   };
   return (
     <form
       onSubmit={(e) => handleSubmit(e)}
-      className="flex w-full max-w-sm flex-col items-center gap-2"
+      className="flex w-full max-w-sm flex-col items-end gap-2"
     >
       <Input
         type="text"
@@ -95,9 +97,9 @@ const SearchEventForm = ({
         value={event}
         onChange={(e) => setEvent(e.target.value)}
       />
-      <div className="flex w-full flex-col gap-2">
-        <Button type="submit" className="w-full">
-          Search
+      <div className="flex w-full flex-col gap-2 sm:flex-row-reverse sm:justify-end">
+        <Button disabled={loading} type="submit" className="w-full">
+          {!loading ? <p>Search</p> : <Icons.spinner />}
         </Button>
         <Button
           variant="outline"
