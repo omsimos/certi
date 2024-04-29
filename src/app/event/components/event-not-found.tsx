@@ -1,4 +1,4 @@
-import { EventForm } from "@/components/event-form";
+import { EventButtons } from "@/components/event-buttons";
 
 export default function Home() {
   return (
@@ -11,7 +11,7 @@ export default function Home() {
           Please enter a valid event code.
         </p>
       </div>
-      <EventForm />
+      <EventButtons />
     </main>
   );
 }

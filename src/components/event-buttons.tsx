@@ -24,16 +24,23 @@ import {
 import useMediaQuery from "@/hooks/use-media-query";
 import { Icons } from "./icons";
 
-export function EventForm() {
+export function EventButtons() {
   const [open, setOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
+
+  const router = useRouter();
 
   if (isDesktop) {
     return (
       <>
         <div className="flex gap-3 [&>*]:px-10">
           <Button onClick={() => setOpen(!open)}>Find Event</Button>
-          <Button variant="secondary">Setup Event</Button>
+          <Button
+            onClick={() => router.push("/event-setup")}
+            variant="secondary"
+          >
+            Setup Event
+          </Button>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="sm:max-w-[425px]">
@@ -52,7 +59,9 @@ export function EventForm() {
     <>
       <div className="flex gap-3 [&>*]:px-10">
         <Button onClick={() => setOpen(true)}>Find Event</Button>
-        <Button variant="secondary">Setup Event</Button>
+        <Button onClick={() => router.push("/event-setup")} variant="secondary">
+          Setup Event
+        </Button>
       </div>
 
       <Drawer open={open} onOpenChange={setOpen}>
@@ -98,7 +107,7 @@ const SearchEventForm = ({
         onChange={(e) => setEvent(e.target.value)}
       />
       <div className="flex w-full flex-col gap-2 sm:flex-row-reverse sm:justify-end">
-        <Button disabled={loading} type="submit" className="w-full">
+        <Button disabled={loading || !event} type="submit" className="w-full">
           {!loading ? <p>Search</p> : <Icons.spinner />}
         </Button>
         <Button
