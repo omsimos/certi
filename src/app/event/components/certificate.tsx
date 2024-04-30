@@ -20,7 +20,6 @@ import {
 type Event = {
   id: string;
   title: string;
-  fullTitle: string;
   organizer: string;
   date: string;
 };
@@ -77,7 +76,7 @@ export function Certificate() {
               <div>
                 <p>
                   Has successfully participated in{" "}
-                  <span className="font-medium">{event.fullTitle}</span> by{" "}
+                  <span className="font-medium">{event.title}</span> by{" "}
                   {event.organizer} held on {event.date}.
                 </p>
                 <p className="mt-7 text-xs text-muted-foreground">
