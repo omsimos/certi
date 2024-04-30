@@ -1,25 +1,28 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 import { z } from "zod";
-
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
-const profileFormSchema = z.object({
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  Form,
+  FormLabel,
+  FormMessage,
+  FormDescription,
+} from "@/components/ui/form";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/config/firebase";
+
+const eventFormSchema = z.object({
   eventCode: z
     .string()
     .min(2, {
@@ -55,22 +58,40 @@ const profileFormSchema = z.object({
     }),
 });
 
-type ProfileFormValues = z.infer<typeof profileFormSchema>;
+type EventFormValues = z.infer<typeof eventFormSchema>;
 
 // This can come from your database or API.
-const defaultValues: Partial<ProfileFormValues> = {};
+const defaultValues: Partial<EventFormValues> = {};
 
 export function AddEventForm() {
-  const form = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileFormSchema),
+  const form = useForm<EventFormValues>({
+    resolver: zodResolver(eventFormSchema),
     defaultValues,
     mode: "onChange",
   });
 
-  function onSubmit(data: ProfileFormValues) {
-    toast("You submitted the following values", {
-      description: JSON.stringify(data, null, 2),
-    });
+  async function onSubmit(data: EventFormValues) {
+    const { title, description, organizer, eventCode } = data;
+
+    const docSnap = await getDoc(doc(db, eventCode, "data"));
+
+    try {
+      if (docSnap.exists()) {
+        return toast.error("Event code already exists");
+      } else {
+        await setDoc(doc(db, `${eventCode}/data`), {
+          title,
+          description,
+          organizer,
+        });
+
+        toast("You submitted the following values", {
+          description: JSON.stringify(data, null, 2),
+        });
+      }
+    } catch (err: any) {
+      toast.error(err.message);
+    }
   }
   const [authorized, setAuthorized] = useState(false);
   const [password, setPassword] = useState("");
@@ -88,16 +109,21 @@ export function AddEventForm() {
 
   if (!authorized) {
     return (
-      <form onSubmit={handleLogin} className="flex gap-3">
-        <Input
-          required
-          type="password"
-          placeholder="Enter password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className=""
-        />
-        <Button type="submit">Login</Button>
+      <form onSubmit={handleLogin}>
+        <div className="flex gap-3">
+          <Input
+            required
+            type="password"
+            placeholder="Enter password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className=""
+          />
+          <Button type="submit">Login</Button>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          This service is currently on closed beta.
+        </p>
       </form>
     );
   }
