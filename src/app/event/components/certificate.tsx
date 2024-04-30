@@ -2,6 +2,7 @@
 
 import { db } from "@/config/firebase";
 import { doc } from "firebase/firestore";
+import type { Attendee, Event } from "@/lib/types";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useDocumentOnce } from "react-firebase-hooks/firestore";
 
@@ -16,20 +17,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-type Event = {
-  id: string;
-  title: string;
-  organizer: string;
-  date: string;
-};
-
-type Attendee = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-};
 
 export function Certificate() {
   const pathname = usePathname();
