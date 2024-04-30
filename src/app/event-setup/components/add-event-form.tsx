@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useState } from "react";
 
 const profileFormSchema = z.object({
   eventCode: z
@@ -70,6 +71,35 @@ export function AddEventForm() {
     toast("You submitted the following values", {
       description: JSON.stringify(data, null, 2),
     });
+  }
+  const [authorized, setAuthorized] = useState(false);
+  const [password, setPassword] = useState("");
+
+  const handleLogin: React.FormEventHandler = (e) => {
+    e.preventDefault();
+
+    if (password === process.env.NEXT_PUBLIC_PASSWORD) {
+      setAuthorized(true);
+      toast.success("Login successful");
+    } else {
+      toast.error("Incorrect password");
+    }
+  };
+
+  if (!authorized) {
+    return (
+      <form onSubmit={handleLogin} className="flex gap-3">
+        <Input
+          required
+          type="password"
+          placeholder="Enter password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className=""
+        />
+        <Button type="submit">Login</Button>
+      </form>
+    );
   }
 
   return (
