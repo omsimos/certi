@@ -13,14 +13,14 @@ import {
 } from "@/components/ui/dialog";
 
 type Props = {
-  openModal: boolean;
-  setOpenModal: React.Dispatch<React.SetStateAction<boolean>>;
+  openAdminModal: boolean;
+  setAdminModal: React.Dispatch<React.SetStateAction<boolean>>;
   handleSubmit: () => void;
 };
 
 export default function AdminPermDialog({
-  openModal,
-  setOpenModal,
+  openAdminModal,
+  setAdminModal,
   handleSubmit,
 }: Props) {
   const [password, setPassword] = useState("");
@@ -38,7 +38,7 @@ export default function AdminPermDialog({
   };
 
   return (
-    <Dialog open={openModal} onOpenChange={setOpenModal}>
+    <Dialog open={openAdminModal} onOpenChange={setAdminModal}>
       {!authorized ? (
         <DialogContent>
           <DialogHeader>
@@ -69,7 +69,7 @@ export default function AdminPermDialog({
           <Button
             onClick={() => {
               handleSubmit();
-              setOpenModal(false);
+              setAdminModal(false);
             }}
           >
             Continue

@@ -11,12 +11,14 @@ import { db } from "@/config/firebase";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { useParams } from "next/navigation";
-import { Input } from "@/components/ui/input";
+import AdminPermDialog from "./admin-perm-dialog";
+import { Icons } from "@/components/icons";
 
 export default function AddParticipants() {
   const [attendees, setAttendees] = useState("");
   const [parsedAttendees, setParsedAttendees] = useState<Attendee[]>([]);
   const [loading, setLoading] = useState(false);
+  const [openAdminModal, setAdminModal] = useState(false);
 
   const params = useParams<{ name: string }>();
 
@@ -87,43 +89,13 @@ export default function AddParticipants() {
     setLoading(false);
   };
 
-  const [authorized, setAuthorized] = useState(false);
-  const [password, setPassword] = useState("");
-
-  const handleLogin: React.FormEventHandler = (e) => {
-    e.preventDefault();
-
-    if (password === process.env.NEXT_PUBLIC_PASSWORD) {
-      setAuthorized(true);
-      toast.success("Login successful");
-    } else {
-      toast.error("Incorrect password");
-    }
-  };
-
-  if (!authorized) {
-    return (
-      <form onSubmit={handleLogin}>
-        <div className="flex gap-3">
-          <Input
-            required
-            type="password"
-            placeholder="Enter password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className=""
-          />
-          <Button type="submit">Login</Button>
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          This service is currently on closed beta.
-        </p>
-      </form>
-    );
-  }
-
   return (
     <div className="relative z-10">
+      <AdminPermDialog
+        openAdminModal={openAdminModal}
+        setAdminModal={setAdminModal}
+        handleSubmit={handleImport}
+      />
       <form className="mx-auto flex max-w-screen-sm flex-col">
         <div>
           <div>
@@ -199,9 +171,9 @@ export default function AddParticipants() {
               disabled={loading}
               type="button"
               className="mt-4 w-full"
-              onClick={handleImport}
+              onClick={() => setAdminModal(!openAdminModal)}
             >
-              Import Certificates
+              {!loading ? "Import Certificates" : <Icons.spinner />}
             </Button>
           </div>
         )}

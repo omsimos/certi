@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/form";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/config/firebase";
+import AdminPermDialog from "./admin-perm-dialog";
+import { useRouter } from "next/navigation";
 
 const eventFormSchema = z.object({
   eventCode: z
@@ -64,6 +66,10 @@ type EventFormValues = z.infer<typeof eventFormSchema>;
 const defaultValues: Partial<EventFormValues> = {};
 
 export function AddEventForm() {
+  const [openAdminModal, setAdminModal] = useState(false);
+
+  const { push } = useRouter();
+
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
     defaultValues,
@@ -88,49 +94,23 @@ export function AddEventForm() {
         toast("You submitted the following values", {
           description: JSON.stringify(data, null, 2),
         });
+
+        push(`/event-setup/${eventCode}`);
       }
     } catch (err: any) {
       toast.error(err.message);
     }
   }
-  const [authorized, setAuthorized] = useState(false);
-  const [password, setPassword] = useState("");
-
-  const handleLogin: React.FormEventHandler = (e) => {
-    e.preventDefault();
-
-    if (password === process.env.NEXT_PUBLIC_PASSWORD) {
-      setAuthorized(true);
-      toast.success("Login successful");
-    } else {
-      toast.error("Incorrect password");
-    }
-  };
-
-  if (!authorized) {
-    return (
-      <form onSubmit={handleLogin}>
-        <div className="flex gap-3">
-          <Input
-            required
-            type="password"
-            placeholder="Enter password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className=""
-          />
-          <Button type="submit">Login</Button>
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          This service is currently on closed beta.
-        </p>
-      </form>
-    );
-  }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <AdminPermDialog
+        openAdminModal={openAdminModal}
+        setAdminModal={setAdminModal}
+        handleSubmit={form.handleSubmit(onSubmit)}
+      />
+
+      <form className="space-y-8">
         <FormField
           control={form.control}
           name="eventCode"
@@ -196,7 +176,14 @@ export function AddEventForm() {
             </FormItem>
           )}
         />
-        <Button type="submit">Add Event</Button>
+        <Button
+          onClick={(e) => {
+            e.preventDefault();
+            setAdminModal(!openAdminModal);
+          }}
+        >
+          Add Event
+        </Button>
       </form>
     </Form>
   );
