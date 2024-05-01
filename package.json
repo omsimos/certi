@@ -27,6 +27,7 @@
     "nanoid": "^5.0.7",
     "next": "latest",
     "next-themes": "^0.3.0",
+    "nextjs-toploader": "^1.6.12",
     "react": "^18",
     "react-dom": "^18",
     "react-firebase-hooks": "^5.1.1",

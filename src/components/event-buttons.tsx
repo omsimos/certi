@@ -23,6 +23,7 @@ import {
 
 import useMediaQuery from "@/hooks/use-media-query";
 import { Icons } from "./icons";
+import Link from "next/link";
 
 export function EventButtons() {
   const [open, setOpen] = useState(false);
@@ -35,11 +36,8 @@ export function EventButtons() {
       <>
         <div className="flex gap-3 [&>*]:px-10">
           <Button onClick={() => setOpen(!open)}>Find Event</Button>
-          <Button
-            onClick={() => router.push("/event-setup")}
-            variant="secondary"
-          >
-            Setup Event
+          <Button variant="secondary">
+            <Link href="/event-setup">Setup Event</Link>
           </Button>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -59,8 +57,8 @@ export function EventButtons() {
     <>
       <div className="flex gap-3 [&>*]:px-10">
         <Button onClick={() => setOpen(true)}>Find Event</Button>
-        <Button onClick={() => router.push("/event-setup")} variant="secondary">
-          Setup Event
+        <Button variant="secondary">
+          <Link href="/event-setup">Setup Event</Link>
         </Button>
       </div>
 
