@@ -16,7 +16,10 @@ export default function EventSetupTabs() {
   }
 
   return (
-    <Tabs defaultValue={currentTab!} className="w-full max-w-md">
+    <Tabs
+      defaultValue={currentTab ?? "participants"}
+      className="w-full max-w-md"
+    >
       <TabsList className="mb-10 w-full [&>*]:w-full">
         <TabsTrigger
           onClick={() => updateTab("participants")}
