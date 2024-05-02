@@ -38,7 +38,7 @@ export function Certificate() {
     doc(db, `${pathname.split("/")[2]}/data`),
   );
 
-  const event = { ...eventValue?.data(), id: eventValue?.id } as Event;
+  const event = { ...eventValue?.data() } as Event;
 
   if (attendeeLoading || eventLoading) return <Loading />;
 

@@ -1,7 +1,7 @@
 export type Event = {
-  id: string;
   title: string;
   organizer: string;
+  description: string;
   date: string;
 };
 
