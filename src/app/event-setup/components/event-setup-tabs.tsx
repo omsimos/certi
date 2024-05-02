@@ -4,8 +4,9 @@ import { useSearchParams } from "next/navigation";
 import { AddEventForm } from "./add-event-form";
 import AddParticipants from "./add-participants";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { Event } from "@/lib/types";
 
-export default function EventSetupTabs() {
+export default function EventSetupTabs({ event }: { event: Event }) {
   const searchParams = useSearchParams();
   const currentTab = searchParams.get("tab");
 
@@ -35,7 +36,7 @@ export default function EventSetupTabs() {
         <AddParticipants />
       </TabsContent>
       <TabsContent value="details">
-        <AddEventForm />
+        <AddEventForm event={event} />
       </TabsContent>
     </Tabs>
   );

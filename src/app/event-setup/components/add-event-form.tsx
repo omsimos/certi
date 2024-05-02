@@ -19,10 +19,11 @@ import {
   FormMessage,
   FormDescription,
 } from "@/components/ui/form";
-import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/config/firebase";
+import type { Event } from "@/lib/types";
 import AdminPermDialog from "./admin-perm-dialog";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const eventFormSchema = z.object({
   eventCode: z
@@ -62,13 +63,15 @@ const eventFormSchema = z.object({
 
 type EventFormValues = z.infer<typeof eventFormSchema>;
 
-// This can come from your database or API.
-const defaultValues: Partial<EventFormValues> = {};
-
-export function AddEventForm() {
+export function AddEventForm({ event }: { event: Event }) {
+  const { push } = useRouter();
+  const params = useParams<{ name: string }>();
   const [openAdminModal, setAdminModal] = useState(false);
 
-  const { push } = useRouter();
+  const defaultValues: Partial<EventFormValues> = {
+    eventCode: params.name,
+    ...event,
+  };
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
@@ -182,7 +185,7 @@ export function AddEventForm() {
             setAdminModal(!openAdminModal);
           }}
         >
-          Add Event
+          {event ? "Update Event" : "Create Event"}
         </Button>
       </form>
     </Form>
