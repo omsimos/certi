@@ -1,45 +1,47 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
-import { Input } from "./ui/input";
-import { Button } from "./ui/button";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { type FormEvent, useState } from "react";
+import useMediaQuery from "@/hooks/use-media-query";
+
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Icons } from "./icons";
 
 import {
   Drawer,
+  DrawerTitle,
+  DrawerHeader,
   DrawerContent,
   DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
 } from "@/components/ui/drawer";
 
 import {
-  Dialog,
-  DialogContent,
   DialogDescription,
+  DialogContent,
   DialogHeader,
   DialogTitle,
+  Dialog,
 } from "@/components/ui/dialog";
-
-import useMediaQuery from "@/hooks/use-media-query";
-import { Icons } from "./icons";
-import Link from "next/link";
 
 export function EventButtons() {
   const [open, setOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
-  const router = useRouter();
+  return (
+    <>
+      <div className="flex gap-3 [&>*]:px-10">
+        <Button onClick={() => setOpen(!open)}>Find Event</Button>
+        <Link
+          href="/event-setup"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-secondary text-sm font-medium text-secondary-foreground ring-offset-background transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+        >
+          Setup Event
+        </Link>
+      </div>
 
-  if (isDesktop) {
-    return (
-      <>
-        <div className="flex gap-3 [&>*]:px-10">
-          <Button onClick={() => setOpen(!open)}>Find Event</Button>
-          <Button variant="secondary">
-            <Link href="/event-setup">Setup Event</Link>
-          </Button>
-        </div>
+      {isDesktop ? (
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
@@ -49,30 +51,19 @@ export function EventButtons() {
             <SearchEventForm openState={open} setOpenState={setOpen} />
           </DialogContent>
         </Dialog>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <div className="flex gap-3 [&>*]:px-10">
-        <Button onClick={() => setOpen(true)}>Find Event</Button>
-        <Button variant="secondary">
-          <Link href="/event-setup">Setup Event</Link>
-        </Button>
-      </div>
-
-      <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerContent>
-          <div className="mx-auto w-full max-w-sm pb-36 pt-7">
-            <DrawerHeader className="px-0">
-              <DrawerTitle>Find Event</DrawerTitle>
-              <DrawerDescription>Enter the event code</DrawerDescription>
-            </DrawerHeader>
-            <SearchEventForm openState={open} setOpenState={setOpen} />
-          </div>
-        </DrawerContent>
-      </Drawer>
+      ) : (
+        <Drawer open={open} onOpenChange={setOpen}>
+          <DrawerContent>
+            <div className="mx-auto w-full max-w-sm pb-36 pt-7">
+              <DrawerHeader className="px-0">
+                <DrawerTitle>Find Event</DrawerTitle>
+                <DrawerDescription>Enter the event code</DrawerDescription>
+              </DrawerHeader>
+              <SearchEventForm openState={open} setOpenState={setOpen} />
+            </div>
+          </DrawerContent>
+        </Drawer>
+      )}
     </>
   );
 }
