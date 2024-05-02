@@ -63,7 +63,7 @@ const eventFormSchema = z.object({
 
 type EventFormValues = z.infer<typeof eventFormSchema>;
 
-export function AddEventForm({ event }: { event: Event }) {
+export function ManageEventForm({ event }: { event?: Event }) {
   const { push } = useRouter();
   const params = useParams<{ name: string }>();
   const [openAdminModal, setAdminModal] = useState(false);

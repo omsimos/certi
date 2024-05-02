@@ -1,5 +1,5 @@
 import { Separator } from "@/components/ui/separator";
-import { AddEventForm } from "./components/add-event-form";
+import { ManageEventForm } from "./components/manage-event-form";
 
 export default function EventSetup() {
   return (
@@ -12,7 +12,7 @@ export default function EventSetup() {
           </p>
         </div>
         <Separator />
-        <AddEventForm />
+        <ManageEventForm />
       </div>
     </main>
   );
