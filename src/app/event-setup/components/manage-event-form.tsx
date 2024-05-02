@@ -40,7 +40,7 @@ const eventFormSchema = z.object({
     .min(2, {
       message: "Title must be at least 2 characters.",
     })
-    .max(30, {
+    .max(50, {
       message: "Title must not be longer than 30 characters.",
     }),
   description: z
@@ -85,6 +85,15 @@ export function ManageEventForm({ event }: { event?: Event }) {
     const docSnap = await getDoc(doc(db, eventCode, "data"));
 
     try {
+      if (event) {
+        await setDoc(doc(db, `${eventCode}/data`), {
+          title,
+          description,
+          organizer,
+        });
+        return toast.success("Event updated successfully");
+      }
+
       if (docSnap.exists()) {
         return toast.error("Event code already exists");
       } else {
@@ -121,10 +130,16 @@ export function ManageEventForm({ event }: { event?: Event }) {
             <FormItem>
               <FormLabel>Event Code</FormLabel>
               <FormControl>
-                <Input placeholder="omsimos-os" {...field} />
+                <Input
+                  disabled={params.name ? true : false}
+                  placeholder="omsimos-os"
+                  {...field}
+                />
               </FormControl>
               <FormDescription>
-                Event code used to search for an event
+                {params.name
+                  ? "Event code cannot be changed."
+                  : "Event code used to search for an event."}
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -140,7 +155,7 @@ export function ManageEventForm({ event }: { event?: Event }) {
               <FormControl>
                 <Input placeholder="Omsimos: The Collective OS" {...field} />
               </FormControl>
-              <FormDescription>Title of the event</FormDescription>
+              {/* <FormDescription>Title of the event</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
@@ -159,7 +174,7 @@ export function ManageEventForm({ event }: { event?: Event }) {
                   {...field}
                 />
               </FormControl>
-              <FormDescription>Description of the event</FormDescription>
+              {/* <FormDescription>Description of the event</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
@@ -174,7 +189,7 @@ export function ManageEventForm({ event }: { event?: Event }) {
               <FormControl>
                 <Input placeholder="omsimos" {...field} />
               </FormControl>
-              <FormDescription>Event organizer</FormDescription>
+              {/* <FormDescription>Event organizer</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
