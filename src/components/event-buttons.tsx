@@ -48,18 +48,18 @@ export function EventButtons() {
               <DialogTitle>Find Event</DialogTitle>
               <DialogDescription>Enter the event code</DialogDescription>
             </DialogHeader>
-            <SearchEventForm openState={open} setOpenState={setOpen} />
+            <SearchEventForm />
           </DialogContent>
         </Dialog>
       ) : (
         <Drawer open={open} onOpenChange={setOpen}>
           <DrawerContent>
-            <div className="mx-auto w-full max-w-sm pb-36 pt-7">
-              <DrawerHeader className="px-0">
+            <div className="mx-auto w-full max-w-sm pb-20 pt-7 ">
+              <DrawerHeader className="text-left">
                 <DrawerTitle>Find Event</DrawerTitle>
                 <DrawerDescription>Enter the event code</DrawerDescription>
               </DrawerHeader>
-              <SearchEventForm openState={open} setOpenState={setOpen} />
+              <SearchEventForm />
             </div>
           </DrawerContent>
         </Drawer>
@@ -68,13 +68,7 @@ export function EventButtons() {
   );
 }
 
-const SearchEventForm = ({
-  openState,
-  setOpenState,
-}: {
-  openState: boolean;
-  setOpenState: React.Dispatch<React.SetStateAction<boolean>>;
-}) => {
+const SearchEventForm = ({}) => {
   const router = useRouter();
   const [event, setEvent] = useState("");
   const [loading, setLoading] = useState(false);
@@ -84,30 +78,22 @@ const SearchEventForm = ({
     router.push(`/event/${event}`);
     setLoading(!loading);
   };
+
   return (
     <form
       onSubmit={(e) => handleSubmit(e)}
-      className="flex w-full max-w-sm flex-col items-end gap-2"
+      className="flex w-full max-w-sm flex-col items-end gap-2 px-4 md:px-0"
     >
-      <Input
-        type="text"
-        placeholder="Event"
-        value={event}
-        onChange={(e) => setEvent(e.target.value)}
-      />
-      <div className="flex w-full flex-col gap-2 sm:flex-row-reverse sm:justify-end">
-        <Button disabled={loading || !event} type="submit" className="w-full">
-          {!loading ? <p>Search</p> : <Icons.spinner />}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={(e) => {
-            e.preventDefault();
-            setOpenState(!openState);
-          }}
+      <div className="flex w-full gap-2">
+        <Input
+          type="text"
+          placeholder="Event"
+          value={event}
           className="w-full"
-        >
-          Cancel
+          onChange={(e) => setEvent(e.target.value)}
+        />
+        <Button disabled={loading || !event} type="submit">
+          {!loading ? <p>Search</p> : <Icons.spinner />}
         </Button>
       </div>
     </form>
