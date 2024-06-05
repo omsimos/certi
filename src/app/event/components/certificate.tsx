@@ -10,6 +10,7 @@ import { useCopyToClipboard } from "@/hooks/copy-to-clipboard";
 import { Card, CardContent } from "@/components/ui/card";
 import Loading from "../[name]/cert/loading";
 import Tilt from "react-parallax-tilt";
+import { toPng } from "html-to-image";
 
 import {
   Tooltip,
@@ -17,6 +18,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useCallback, useRef, useState } from "react";
+import { toast } from "sonner";
+import { Icons } from "@/components/icons";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export function Certificate() {
   const pathname = usePathname();
@@ -40,6 +46,38 @@ export function Certificate() {
 
   const event = { ...eventValue?.data() } as Event;
 
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [imgLoading, setImgLoading] = useState(false);
+
+  const saveImage = useCallback(() => {
+    if (cardRef.current === null) {
+      return;
+    }
+
+    setImgLoading(true);
+
+    toast.promise(
+      toPng(cardRef.current, {
+        skipAutoScale: true,
+        cacheBust: true,
+        pixelRatio: 3,
+      })
+        .then((dataUrl) => {
+          const link = document.createElement("a");
+          link.download = `certificate_${certId}.png`;
+          link.href = dataUrl;
+          link.click();
+          toast.success("Image Saved!");
+          setImgLoading(false);
+        })
+        .catch((err) => {
+          toast.error(err.message);
+          setImgLoading(false);
+        }),
+      { loading: "Saving image...", success: "Saved image!", error: "Error!" },
+    );
+  }, [cardRef, certId]);
+
   if (attendeeLoading || eventLoading) return <Loading />;
 
   if (!attendee.email)
@@ -50,9 +88,12 @@ export function Certificate() {
     );
 
   return (
-    <div className="container grid h-screen place-items-center">
+    <div className="container flex h-screen flex-col items-center justify-center">
       <Tilt>
-        <Card className="relative max-w-screen-sm overflow-x-hidden border-none bg-foreground text-background">
+        <Card
+          ref={cardRef}
+          className="relative max-w-screen-sm overflow-x-hidden border-none bg-foreground text-background"
+        >
           <div className="absolute -left-10 top-1/2 hidden h-16 w-16 -translate-y-1/2 rounded-full bg-background sm:block" />
           <div className="absolute -right-10 top-1/2 h-16 w-16 -translate-y-1/2 rounded-full bg-background" />
           <CardContent className="flex flex-col px-0 py-0 sm:flex-row sm:px-16">
@@ -91,6 +132,27 @@ export function Certificate() {
           </CardContent>
         </Card>
       </Tilt>
+
+      <div className="mt-8 flex items-center space-x-2 sm:space-x-4">
+        {imgLoading ? (
+          <Icons.spinner className="h-6 w-6 text-white" />
+        ) : (
+          <>
+            <Link href={`/event/${pathname.split("/")[2]}`}>
+              <Icons.arrowLeft className="h-10 w-10 " />
+            </Link>
+
+            <Button
+              variant="outline"
+              type="button"
+              disabled={imgLoading}
+              onClick={saveImage}
+            >
+              Download
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
