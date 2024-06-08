@@ -7,6 +7,7 @@ import NextTopLoader from "nextjs-toploader";
 import { Navbar } from "@/components/navbar";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import BrowserWarn from "@/components/browser-warn";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body className={cn(inter.className, "antialiased")}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <NextTopLoader />
+          <BrowserWarn />
           <Navbar />
           {children}
         </ThemeProvider>
