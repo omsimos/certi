@@ -27,7 +27,7 @@
     "lucide-react": "^0.365.0",
     "modern-screenshot": "^4.4.39",
     "nanoid": "^5.0.7",
-    "next": "latest",
+    "next": "14.2.5",
     "next-themes": "^0.3.0",
     "nextjs-toploader": "^1.6.12",
     "react": "^18",
