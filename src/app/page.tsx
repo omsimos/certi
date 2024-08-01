@@ -1,13 +1,14 @@
 import { EventButtons } from "@/components/event-buttons";
 import AnimatedShinyText from "@/components/magicui/animated-shiny-text";
+import RetroGrid from "@/components/magicui/retro-grid";
 import { cn } from "@/lib/utils";
 import { ArrowRightIcon } from "lucide-react";
 import Link from "next/link";
 
 export default async function Home() {
   return (
-    <main className="container flex min-h-screen flex-col items-center gap-6 py-36 md:gap-8 lg:pt-64">
-      <div className="flex flex-col items-center gap-2 border-b-2 border-dashed border-muted pb-6 md:pb-8">
+    <main className="container flex min-h-screen flex-col items-center gap-6 overflow-hidden pt-36 md:gap-8">
+      <div className="flex flex-col items-center gap-2 border-b border-muted/60 pb-6 md:pb-8">
         <div
           className={cn(
             "bg-bg group rounded-full border border-black/5 text-base text-foreground transition-all ease-in hover:cursor-pointer hover:bg-slate-900 dark:border-white/5",
@@ -37,8 +38,7 @@ export default async function Home() {
       </p>
 
       <EventButtons />
-
-      {/* <Demo /> */}
+      <RetroGrid className="absolute -bottom-64 -z-10 [mask-image:radial-gradient(ellipse_at_bottom,white,transparent_80%)]" />
     </main>
   );
 }
