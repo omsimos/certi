@@ -32,13 +32,21 @@ export function EventButtons() {
   return (
     <>
       <div className="flex gap-3 [&>*]:px-10">
-        <Button onClick={() => setOpen(!open)}>Find Event</Button>
-        <Link
-          href="/event-setup"
-          className="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-secondary text-sm font-medium text-secondary-foreground ring-offset-background transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+        <Button
+          size="lg"
+          className="text-md font-medium"
+          onClick={() => setOpen(!open)}
         >
-          Setup Event
-        </Link>
+          Find Event
+        </Button>
+        <Button
+          size="lg"
+          className="text-md font-medium"
+          asChild
+          variant="secondary"
+        >
+          <Link href="/event-setup">Setup Event</Link>
+        </Button>
       </div>
 
       {isDesktop ? (

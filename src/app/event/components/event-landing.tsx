@@ -84,13 +84,19 @@ export default function EventLanding({
 
   return (
     <main className="container flex flex-col items-center justify-between gap-20 pb-20 pt-36 lg:flex-row lg:items-start lg:pt-56">
-      <div className="text-left md:text-center lg:text-left">
-        <h1 className="text-5xl font-bold md:text-6xl lg:text-7xl">
+      <div className="space-y-24 text-left lg:text-left">
+        <h1 className="bg-zinc-800 from-foreground bg-clip-text text-left text-[10vw] font-extrabold leading-none tracking-tighter text-transparent dark:bg-gradient-to-b dark:to-zinc-400 md:text-7xl">
           {eventDetails.title}
         </h1>
-        <p className="mx-auto mt-3 w-full hyphens-auto break-words text-lg text-muted-foreground md:w-3/4 md:text-xl lg:mx-0">
-          {eventDetails.description}
-        </p>
+
+        <div>
+          <h3 className="bg-zinc-800 from-foreground bg-clip-text text-left text-xl font-extrabold leading-none tracking-tighter text-transparent dark:bg-gradient-to-b dark:to-zinc-400 md:text-3xl">
+            About the Event
+          </h3>
+          <p className="mt-3 w-full hyphens-auto break-words text-lg text-muted-foreground md:w-3/4 md:text-xl">
+            {eventDetails.description}
+          </p>
+        </div>
       </div>
 
       <Card className="w-full max-w-sm">
@@ -113,7 +119,11 @@ export default function EventLanding({
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button
+                type="submit"
+                className="w-full font-semibold"
+                disabled={loading}
+              >
                 {loading ? <Icons.spinner /> : "Get Certificate"}
               </Button>
             </form>
