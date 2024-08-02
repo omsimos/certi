@@ -16,12 +16,9 @@ export default async function Home() {
           )}
         >
           <AnimatedShinyText className="inline-flex items-center justify-center px-4 py-1 transition ease-out hover:text-neutral-600 hover:duration-300 hover:dark:text-neutral-400">
-            <Link
-              href="https://github.com/hyamero/certificate-generator"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              ✨ Contribute to GitHub
+            <Link href="/badge">
+              ✨ Experimental:
+              <span className="font-semibold"> Visit 3D Badge</span>
             </Link>
             <ArrowRightIcon className="ml-1 size-3 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
           </AnimatedShinyText>
