@@ -20,8 +20,16 @@ import {
   FormDescription,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type EventDetails = {
   title: string;
@@ -40,6 +48,8 @@ const formSchema = z.object({
       message: "This field has to be filled",
     })
     .email("This is not a valid email"),
+
+  type: z.enum(["badge", "cert"]),
 });
 
 export default function EventLanding({
@@ -53,6 +63,7 @@ export default function EventLanding({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "dale@ban.com",
+      type: "badge",
     },
   });
 
@@ -70,7 +81,7 @@ export default function EventLanding({
       let message = "⚠️ Certificate Not Found";
       querySnapshot.forEach((doc) => {
         if (doc.data().email) {
-          push(`/event/${eventCode}/cert?id=${doc.id}`);
+          push(`/event/${eventCode}/${values.type}?id=${doc.id}`);
           message = "✅ Certificate found!";
           return;
         }
@@ -119,13 +130,41 @@ export default function EventLanding({
                   </FormItem>
                 )}
               />
-              <Button
-                type="submit"
-                className="w-full font-semibold"
-                disabled={loading}
-              >
-                {loading ? <Icons.spinner /> : "Get Certificate"}
-              </Button>
+              <div className="space-y-1">
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select type</FormLabel>
+                      <Select onValueChange={field.onChange} {...field}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem className="cursor-pointer" value="badge">
+                            Badge
+                          </SelectItem>
+                          <SelectItem className="cursor-pointer" value="cert">
+                            Certificate
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  variant="secondary"
+                  type="submit"
+                  className="w-full font-medium"
+                  disabled={loading}
+                >
+                  {loading ? <Icons.spinner /> : "Generate"}
+                </Button>
+              </div>
             </form>
           </Form>
         </CardContent>

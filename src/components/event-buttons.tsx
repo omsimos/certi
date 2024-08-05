@@ -78,7 +78,7 @@ export function EventButtons() {
 
 const SearchEventForm = ({}) => {
   const router = useRouter();
-  const [event, setEvent] = useState("");
+  const [event, setEvent] = useState("hacking-ai");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {

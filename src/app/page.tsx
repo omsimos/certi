@@ -16,7 +16,7 @@ export default async function Home() {
           )}
         >
           <AnimatedShinyText className="inline-flex items-center justify-center px-4 py-1 transition ease-out hover:text-neutral-600 hover:duration-300 hover:dark:text-neutral-400">
-            <Link href="/badge">
+            <Link href={`/event/hacking-ai/badge?id=Z5jdHi6BmyT`}>
               ✨ Experimental:
               <span className="font-semibold"> Visit 3D Badge</span>
             </Link>
