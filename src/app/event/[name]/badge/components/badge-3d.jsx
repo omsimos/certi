@@ -31,7 +31,7 @@ useTexture.preload(
   "https://github.com/user-attachments/assets/999b5d58-ac8a-4c20-8fc6-74e8ab7876e7",
 );
 
-export default function Badge3D() {
+export default function Badge3D({ attendee }) {
   const { debug } = useControls({ debug: false });
   return (
     <Canvas camera={{ position: [0, 0, 13], fov: 25 }}>
@@ -42,7 +42,7 @@ export default function Badge3D() {
         gravity={[0, -40, 0]}
         timeStep={1 / 60}
       >
-        <Band />
+        <Band attendee={attendee} />
       </Physics>
       <Environment background blur={0.75}>
         <color attach="background" args={["black"]} />
@@ -79,7 +79,7 @@ export default function Badge3D() {
   );
 }
 
-function BadgeTexture() {
+function BadgeTexture({ attendee }) {
   // const viewport = useThree((state) => state.viewport);
 
   return (
@@ -105,19 +105,31 @@ function BadgeTexture() {
             bevelSize={0}
             font="/Geist_Regular.json"
             height={0}
-            position={[0.9, 2, 0]}
+            position={[1.05, 2.1, 0]}
             rotation={[0, Math.PI, Math.PI]}
-            size={0.2}
-            letterSpacing={-0.03}
+            size={0.15}
+            letterSpacing={-0.02}
           >
-            hyamero
+            {attendee.firstName}
           </Text3D>
           <Text3D
             bevelEnabled={false}
             bevelSize={0}
             font="/Geist_Regular.json"
             height={0}
-            position={[1.13, 3.1, 0]}
+            position={[1.23, 2.3, 0]}
+            rotation={[0, Math.PI, Math.PI]}
+            size={0.15}
+            letterSpacing={-0.02}
+          >
+            {attendee.lastName}
+          </Text3D>
+          <Text3D
+            bevelEnabled={false}
+            bevelSize={0}
+            font="/Geist_Regular.json"
+            height={0}
+            position={[1.3, 3.25, 0]}
             rotation={[0, Math.PI, Math.PI]}
             size={0.07}
             letterSpacing={-0.008}
@@ -130,7 +142,7 @@ function BadgeTexture() {
   );
 }
 
-function Band({ maxSpeed = 50, minSpeed = 10 }) {
+function Band({ maxSpeed = 50, minSpeed = 10, attendee }) {
   const band = useRef(), fixed = useRef(), j1 = useRef(), j2 = useRef(), j3 = useRef(), card = useRef() // prettier-ignore
   const vec = new THREE.Vector3(), ang = new THREE.Vector3(), rot = new THREE.Vector3(), dir = new THREE.Vector3() // prettier-ignore
   const segmentProps = {
@@ -280,8 +292,7 @@ function Band({ maxSpeed = 50, minSpeed = 10 }) {
                 roughness={0.3}
               >
                 <RenderTexture attach="map" height={2000} width={2000}>
-                  {/* <BadgeTexture user={user} /> */}
-                  <BadgeTexture />
+                  <BadgeTexture attendee={attendee} />
                 </RenderTexture>
               </meshPhysicalMaterial>
             </mesh>
