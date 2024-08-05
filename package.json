@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "ui:add": "bunx --bun shadcn-ui@latest add"
+    "ui:add": "bun x --bun shadcn-ui@latest add"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
