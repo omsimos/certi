@@ -31,7 +31,7 @@ useTexture.preload(
   "https://github.com/user-attachments/assets/999b5d58-ac8a-4c20-8fc6-74e8ab7876e7",
 );
 
-export default function App() {
+export default function Badge3D() {
   const { debug } = useControls({ debug: false });
   return (
     <Canvas camera={{ position: [0, 0, 13], fov: 25 }}>
