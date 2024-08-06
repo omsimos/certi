@@ -1,4 +1,5 @@
 ![image](https://github.com/hyamero/certificate-generator/assets/78056869/a8b0c19a-34e3-49ed-8a46-34276366b823)
+![image](https://github.com/user-attachments/assets/706c43c7-9c41-408a-a5ae-1a9052af16f3)
 
 > [!NOTE]
 > This project is under heavy development. Changes and updates may happen frequently as we work to improve its functionality and features. Contributions from the community are welcome as we strive to enhance the performance of this project. 🙌
