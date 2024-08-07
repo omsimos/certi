@@ -45,7 +45,7 @@ export default function Badge3D({ attendee }) {
         <Band attendee={attendee} />
       </Physics>
       <Environment background blur={0.75}>
-        <color attach="background" args={["black"]} />
+        {/* <color attach="background" args={["black"]} /> */}
         <Lightformer
           intensity={2}
           color="white"
