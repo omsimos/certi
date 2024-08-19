@@ -1,17 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
-import { doc, setDoc } from "firebase/firestore";
-import { nanoid } from "nanoid";
-import { toast } from "sonner";
 import { z } from "zod";
-import { Attendee } from "@/lib/types";
-import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { nanoid } from "nanoid";
+import React, { useState } from "react";
 import { db } from "@/config/firebase";
-import { Textarea } from "@/components/ui/textarea";
+import { Attendee } from "@/lib/types";
+import { doc, setDoc } from "firebase/firestore";
+
 import { Separator } from "@/components/ui/separator";
-import { useParams } from "next/navigation";
+import { Textarea } from "@/components/ui/textarea";
 import AdminPermDialog from "./admin-perm-dialog";
+import { Button } from "@/components/ui/button";
+import { useParams } from "next/navigation";
 import { Icons } from "@/components/icons";
 
 export default function AddParticipants() {
@@ -96,36 +97,20 @@ export default function AddParticipants() {
         setAdminModal={setAdminModal}
         handleSubmit={handleImport}
       />
-      <form className="mx-auto flex max-w-screen-sm flex-col">
-        <div>
+      <form className="mx-auto flex max-w-screen-sm">
+        <div className="flex w-full flex-col gap-5">
           <div>
-            <h3 className="text-lg font-medium">Import Participants</h3>
+            <h3 className="text-lg font-medium">Import via JSON</h3>
             <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-destructive">Strict: </span>
               Make sure to follow the same JSON Format
             </p>
-            <Separator className="my-5" />
           </div>
-          <Textarea
-            placeholder="Paste JSON"
-            className="max-h-[350px] min-h-[150px]"
-            value={attendees}
-            onChange={(e) => setAttendees(e.target.value)}
-          />
-        </div>
-
-        <Button
-          disabled={loading}
-          type="button"
-          className="mt-4"
-          onClick={handleParse}
-        >
-          Parse Data
-        </Button>
-
-        <p className="mt-8 text-sm text-muted-foreground">Sample JSON</p>
-        <pre className="bg-bg my-4 rounded border px-8 py-4 text-orange-600 dark:text-yellow-500">
-          <code>
-            {`[
+          <Separator />
+          <p className="text-sm text-muted-foreground">Sample JSON</p>
+          <pre className="bg-bg rounded border px-8 py-4 text-orange-600 dark:text-yellow-500">
+            <code>
+              {`[
   {
     "firstName": "John",
     "lastName": "Doe",
@@ -137,8 +122,27 @@ export default function AddParticipants() {
     "email": "sally@smith.com"
   }
 ]`}
-          </code>
-        </pre>
+            </code>
+          </pre>
+
+          <div>
+            <Textarea
+              placeholder="Paste JSON"
+              className="max-h-[350px] min-h-[150px]"
+              value={attendees}
+              onChange={(e) => setAttendees(e.target.value)}
+            />
+
+            <Button
+              disabled={loading}
+              type="button"
+              className="mt-2 w-full"
+              onClick={handleParse}
+            >
+              Parse Data
+            </Button>
+          </div>
+        </div>
 
         {parsedAttendees.length > 0 && (
           <div className="mt-8">

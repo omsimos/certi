@@ -2,8 +2,19 @@
 
 import * as xlsx from "xlsx";
 import { ChangeEvent } from "react";
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 export function JsonConvert() {
   const readUploadFile = (e: ChangeEvent<HTMLInputElement>) => {
@@ -26,13 +37,21 @@ export function JsonConvert() {
   };
 
   return (
-    <form className="grid w-full max-w-md items-center gap-1.5">
-      <h3 className="text-lg font-medium">
-        Import Participants via .xlsx file
-      </h3>
-      <p className="text-sm text-muted-foreground">
-        Make sure to follow the same JSON Format
-      </p>
+    <form className="grid w-full max-w-md items-center gap-5">
+      <div>
+        <h3 className="text-lg font-medium">
+          Import Participants via .xlsx file
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          <span className="font-semibold text-destructive">Strict:</span> Make
+          sure to follow the same Excel Format
+        </p>
+      </div>
+
+      <Separator />
+
+      <p className="text-sm text-muted-foreground">Sample Excel</p>
+      <TableDemo />
       <div className="flex gap-2">
         <Input
           id="picture"
@@ -43,5 +62,41 @@ export function JsonConvert() {
         <Button>Parse Data</Button>
       </div>
     </form>
+  );
+}
+
+const placeholder = [
+  {
+    firstName: "John",
+    lastName: "Doe",
+    email: "john@doe.com",
+  },
+  {
+    firstName: "Sally",
+    lastName: "Smith",
+    email: "sally@smith.com",
+  },
+];
+
+export function TableDemo() {
+  return (
+    <Table className="border">
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[100px]">firstName</TableHead>
+          <TableHead>lastName</TableHead>
+          <TableHead>email</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {placeholder.map((data) => (
+          <TableRow key={data.email}>
+            <TableCell>{data.firstName}</TableCell>
+            <TableCell>{data.lastName}</TableCell>
+            <TableCell>{data.email}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
