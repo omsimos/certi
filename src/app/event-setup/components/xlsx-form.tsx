@@ -17,12 +17,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Attendee } from "@/lib/types";
+import { useAttendeesStore } from "@/hooks/use-attendees-store";
+import { useDialogStore } from "@/hooks/use-dialog-store";
+import { Icons } from "@/components/icons";
 
 export function XlsxForm() {
-  // const [attendees, setAttendees] = useState("");
-  const [parsedAttendees, setParsedAttendees] = useState<Attendee[]>([]);
   const [loading, setLoading] = useState(false);
-  // const [openAdminModal, setAdminModal] = useState(false);
+
+  const { setParsedAttendees } = useAttendeesStore();
+  const { setImportDialog } = useDialogStore();
 
   const handleParse = (e: ChangeEvent<HTMLInputElement>) => {
     setLoading(true);
@@ -62,6 +65,8 @@ export function XlsxForm() {
 
           toast.success("Parsed successfully");
           setParsedAttendees(_parsedAttendees);
+          setParsedAttendees(_parsedAttendees);
+          setImportDialog(true);
         };
         reader.readAsArrayBuffer(e.target.files[0]);
       }
@@ -88,12 +93,17 @@ export function XlsxForm() {
 
       <p className="text-sm text-muted-foreground">Sample Excel</p>
       <TableDemo />
-      <Input
-        id="picture"
-        type="file"
-        className="w-full cursor-pointer bg-muted/30"
-        onChange={(e) => handleParse(e)}
-      />
+      <div className="relative">
+        <Input
+          id="picture"
+          type="file"
+          className="w-full cursor-pointer bg-muted/30"
+          onChange={(e) => handleParse(e)}
+        />
+        {loading && (
+          <Icons.spinner className="absolute right-4 top-1/2 -translate-y-1/2" />
+        )}
+      </div>
     </form>
   );
 }
