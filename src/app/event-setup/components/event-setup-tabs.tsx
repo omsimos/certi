@@ -4,7 +4,6 @@ import { useSearchParams } from "next/navigation";
 import { ManageEventForm } from "./manage-event-form";
 import AddParticipants from "./add-participants";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { JsonConvert } from "../components/json-convert";
 import type { Event } from "@/lib/types";
 
 export default function EventSetupTabs({ event }: { event: Event }) {
@@ -33,13 +32,7 @@ export default function EventSetupTabs({ event }: { event: Event }) {
           Details
         </TabsTrigger>
       </TabsList>
-      <TabsContent value="participants" className="flex flex-col gap-16">
-        <JsonConvert />
-        <div className="flex items-center gap-3 text-center text-muted-foreground">
-          <div className="h-px w-full bg-muted" />
-          <span>or</span>
-          <div className="h-px w-full bg-muted" />
-        </div>
+      <TabsContent value="participants">
         <AddParticipants />
       </TabsContent>
       <TabsContent value="details">
