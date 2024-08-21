@@ -29,7 +29,7 @@ export default function AdminPermDialog({
   const handleLogin: React.FormEventHandler = (e) => {
     e.preventDefault();
 
-    if (password === process.env.NEXT_PUBLIC_PASSWORD) {
+    if (password === process.env.NEXT_PUBLIC_TEMP_CREDENTIAL) {
       toast.success("Login successful");
       setAuthorized(true);
     } else {
