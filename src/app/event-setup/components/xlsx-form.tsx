@@ -53,7 +53,7 @@ export function XlsxForm() {
           _parsedAttendees.forEach((m, i) => {
             const data = schema.safeParse(m);
             if (!data.success) {
-              toast.error("Contains invalid data");
+              toast.error("Contains invalid data, please check the format");
               console.log(i, data.error, m);
               invalid = true;
               return;

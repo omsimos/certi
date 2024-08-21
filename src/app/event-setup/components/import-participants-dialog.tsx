@@ -28,6 +28,7 @@ export default function ImportParticipantsDialog() {
     setLoading(true);
     if (parsedAttendees.length === 0) {
       toast.error("No attendees to import");
+      setImportDialog(false);
       return;
     }
 
@@ -44,6 +45,7 @@ export default function ImportParticipantsDialog() {
           );
         } catch (err: any) {
           toast.error(err.message);
+          setImportDialog(false);
         }
       });
 
@@ -52,10 +54,13 @@ export default function ImportParticipantsDialog() {
       }, 500);
 
       toast.success("Certificates added");
+      setImportDialog(false);
     } catch (err: any) {
       toast.error(err.message);
+      setImportDialog(false);
     }
     setLoading(false);
+    setImportDialog(false);
   };
 
   const cancelImport = () => {
