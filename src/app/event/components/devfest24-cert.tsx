@@ -6,6 +6,7 @@ import { useDocumentOnce } from "react-firebase-hooks/firestore";
 import type { Attendee, Event } from "@/lib/types";
 import { doc } from "firebase/firestore";
 import { db } from "@/config/firebase";
+import { Inter } from "next/font/google";
 
 import { useCopyToClipboard } from "@/hooks/copy-to-clipboard";
 import Loading from "../[name]/cert/loading";
@@ -18,6 +19,8 @@ import { toast } from "sonner";
 import { Icons } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import certImage from "@/assets/devfest-certificate.png";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export function DevfestCertificate() {
   const pathname = usePathname();
@@ -96,7 +99,7 @@ export function DevfestCertificate() {
           />
 
           <h2
-            className={`absolute left-[45%] top-1/2 z-10 -translate-y-3/4 border-b border-b-neutral-700 uppercase text-[#171717] [font-size:clamp(12px,3vw,24px)]`}
+            className={`absolute left-[45%] top-1/2 z-10 -translate-y-3/4 border-b border-b-neutral-700 uppercase text-[#171717] [font-size:clamp(12px,3vw,28px)] ${inter.className} font-semibold tracking-tighter`}
           >
             {attendee.firstName} {attendee.lastName}
           </h2>
