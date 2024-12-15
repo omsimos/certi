@@ -96,7 +96,7 @@ export function DevfestCertificate() {
           />
 
           <h2
-            className={`absolute left-[45%] top-1/2 z-10 -translate-y-3/4 uppercase text-[#171717] [font-size:clamp(16px,3vw,24px)]`}
+            className={`absolute left-[45%] top-1/2 z-10 -translate-y-3/4 border-b border-b-neutral-700 uppercase text-[#171717] [font-size:clamp(12px,3vw,24px)]`}
           >
             {attendee.firstName} {attendee.lastName}
           </h2>
