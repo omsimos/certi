@@ -62,8 +62,8 @@ export default function EventLanding({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "dale@ban.com",
-      type: "badge",
+      email: "",
+      type: "cert",
     },
   });
 
@@ -122,7 +122,7 @@ export default function EventLanding({
                   <FormItem>
                     <FormMessage />
                     <FormControl>
-                      <Input placeholder="shadcn" {...field} />
+                      <Input placeholder="example@omsimos.com" {...field} />
                     </FormControl>
                     <FormDescription>
                       Enter registered email address
