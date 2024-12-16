@@ -37,7 +37,7 @@ export const CertificateEmail = ({ id, firstName, lastName }: Props) => {
             </Text>
             <Text className="text-black text-[14px] leading-[24px]">
               We&apos;re excited to let you know that your certificate for{" "}
-              <strong>Google DevFest 2023</strong> is ready and waiting for you.
+              <strong>Google DevFest 2024</strong> is ready and waiting for you.
               🎉 To claim it, just click the button below or check out the
               attached image:
             </Text>
