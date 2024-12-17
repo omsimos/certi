@@ -1,48 +1,31 @@
-import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
-import Mail from 'nodemailer/lib/mailer';
+import { NextRequest, NextResponse } from "next/server";
+import { render } from "@react-email/render";
+import Email from "@/components/devfest24-email";
+import { handleSendEmail } from "@/lib/email";
 
-type Payload = {
-  to: string;
-  subject: string;
-  html: string;
-  attachments: Mail.Attachment[];
-};
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data: Payload = await request.json();
+    const body = await request.json();
+    const { id, email, firstName, lastName } = body;
 
-    let transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.NODEMAILER_EMAIL,
-        pass: process.env.NODEMAILER_PW,
-      },
+    const htmlContent = await render(Email({ id, firstName, lastName }));
+
+    await handleSendEmail({
+      to: email,
+      subject: "Certificate: Google DevFest 2024",
+      html: htmlContent,
     });
 
-    await new Promise((resolve, reject) => {
-      transporter.sendMail(
-        {
-          from: process.env.NODEMAILER_EMAIL,
-          ...data,
-        },
-        (error, info) => {
-          if (error) {
-            console.error('Error sending email:', error);
-            reject(error);
-          } else {
-            console.log('Email sent:', info.response);
-            resolve(info);
-          }
-        }
-      );
-    });
-
-    return NextResponse.json({ message: 'Email sent successfully' }, { status: 200 });
-  } catch (error) {
-    console.error('Error in route handler:', error);
-    return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
+    return NextResponse.json({ message: "Success" }, { status: 200 });
+  } catch (err: any) {
+    console.error("Error sending email:", err, process.env.NODEMAILER_PW);
+    return NextResponse.json({ message: err.message }, { status: 500 });
   }
 }
 
+export async function GET() {
+  return NextResponse.json(
+    { message: "GET request received" },
+    { status: 200 },
+  );
+}

@@ -5,12 +5,18 @@ type Payload = {
   to: string;
   subject: string;
   html: string;
-  attachments: Mail.Attachment[];
+  attachments?: Mail.Attachment[];
 };
 
 export const handleSendEmail = async (data: Payload) => {
   let transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.hostinger.com",
+    port: 465,
+    secure: true,
+    debug: process.env.NODE_ENV === "development",
+    tls: {
+      rejectUnauthorized: false,
+    },
     auth: {
       user: process.env.NODEMAILER_EMAIL,
       pass: process.env.NODEMAILER_PW,
@@ -19,11 +25,12 @@ export const handleSendEmail = async (data: Payload) => {
 
   return (
     await transporter.sendMail({
-      from: process.env.NODEMAILER_EMAIL,
+      from: "no-reply@omsimos.com",
       ...data,
     }),
     function (error: string, _info: string) {
       if (error) {
+        console.log("Your Email", process.env.NODEMAILER_EMAIL);
         throw new Error(error);
       } else {
         console.log("Email Sent");
