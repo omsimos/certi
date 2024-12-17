@@ -14,9 +14,6 @@ export const handleSendEmail = async (data: Payload) => {
     port: 465,
     secure: true,
     debug: process.env.NODE_ENV === "development",
-    tls: {
-      rejectUnauthorized: false,
-    },
     auth: {
       user: process.env.NODEMAILER_EMAIL,
       pass: process.env.NODEMAILER_PW,
