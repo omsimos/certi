@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
 
     await handleSendEmail({
       to: email,
-      subject: "Certificate: Google DevFest 2024",
+      subject: "Certificate: DevFest Bacolod 2024",
       html: htmlContent,
     });
 

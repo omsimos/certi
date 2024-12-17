@@ -69,7 +69,7 @@ export const CertificateEmail = ({
             <Section className="mb-8 text-center">
               <Button
                 className="rounded-full bg-blue-600 px-6 py-3 text-center text-base font-semibold text-white no-underline transition-all hover:bg-blue-700"
-                href={`https://devfest23.omsimos.com/cert/${id}`}
+                href={`https://gdg.omsimos.com/event/devfest-24/cert?id=${id}`}
               >
                 View Your Certificate
               </Button>

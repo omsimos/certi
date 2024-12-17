@@ -79,13 +79,31 @@ export default function EventLanding({
     try {
       const querySnapshot = await getDocs(q);
       let message = "⚠️ Certificate Not Found";
-      querySnapshot.forEach((doc) => {
-        if (doc.data().email) {
+
+      for (const doc of querySnapshot.docs) {
+        const data = doc.data();
+
+        if (doc.exists()) {
+          await fetch("/api/email", {
+            method: "POST",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              id: doc.id,
+              email: data.email,
+              firstName: data.firstName,
+              lastName: data.lastName,
+            }),
+          });
+
           push(`/event/${eventCode}/${values.type}?id=${doc.id}`);
           message = "✅ Certificate found!";
-          return;
+          break;
         }
-      });
+      }
+
       toast(message);
       setLoading(false);
     } catch (err: any) {
@@ -144,7 +162,11 @@ export default function EventLanding({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem className="cursor-pointer" value="badge">
+                          <SelectItem
+                            disabled
+                            className="cursor-pointer"
+                            value="badge"
+                          >
                             Badge
                           </SelectItem>
                           <SelectItem className="cursor-pointer" value="cert">

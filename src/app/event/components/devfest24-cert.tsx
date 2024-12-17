@@ -65,14 +65,13 @@ export function DevfestCertificate() {
           link.download = `certificate_${certId}.png`;
           link.href = dataUrl;
           link.click();
-          toast.success("Image Saved!");
           setImgLoading(false);
         })
         .catch((err) => {
           toast.error(err.message);
           setImgLoading(false);
         }),
-      { loading: "Saving image...", success: "Saved image!", error: "Error!" },
+      { loading: "Saving image...", success: "Image saved!", error: "Error!" },
     );
   }, [cardRef, certId]);
 
