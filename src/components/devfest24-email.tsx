@@ -79,13 +79,13 @@ export const CertificateEmail = ({
               It&apos;s a great way to showcase your involvement in the tech
               community!
             </Text>
-              <Text className="mb-4 text-base leading-6 text-gray-600">
-                We value your feedback! Please take a moment to share your
-                thoughts about the event:
-              </Text>
+            <Text className="mb-4 text-base leading-6 text-gray-600">
+              We value your feedback! Please take a moment to share your
+              thoughts about the event:
+            </Text>
             <Section className="mb-8 text-center">
               <Link
-                href="https://omsimos.com"
+                href="https://bit.ly/devfestbcd24_feedback"
                 className="text-blue-600 underline"
               >
                 Provide Feedback
