@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ToggleTheme } from "./toggle-theme";
-import ManageEventDialog from "./manage-event-dialog";
+// import ManageEventDialog from "./manage-event-dialog";
 
 export function Navbar() {
   return (
@@ -17,7 +17,7 @@ export function Navbar() {
       </div>
       <div className="space-x-2">
         <ToggleTheme />
-        <ManageEventDialog />
+        {/** <ManageEventDialog /> **/}
       </div>
     </div>
   );
