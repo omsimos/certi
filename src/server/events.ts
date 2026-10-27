@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import type { DB } from "@/db";
@@ -14,11 +14,27 @@ function isEventCodeConflict(err: unknown): boolean {
   return false;
 }
 
+export type PublicEvent = Omit<Event, "ownerId">;
+
+// Public reads must not expose who owns an event.
+export function toPublicEvent({ ownerId: _ownerId, ...rest }: Event): PublicEvent {
+  return rest;
+}
+
 export async function createEvent(db: DB, ownerId: string, input: EventInput): Promise<Event> {
   try {
     const [row] = await db
       .insert(event)
-      .values({ id: nanoid(), ownerId, ...input })
+      // Explicit fields so stray keys on `input` (id, ownerId, timestamps) are ignored.
+      .values({
+        id: nanoid(),
+        ownerId,
+        code: input.code,
+        title: input.title,
+        description: input.description,
+        organizer: input.organizer,
+        date: input.date,
+      })
       .returning();
     return row;
   } catch (err) {
@@ -51,8 +67,14 @@ export async function updateEvent(
   const updatedAt = new Date(Math.max(Date.now(), prev.updatedAt.getTime() + 1));
   const [row] = await db
     .update(event)
-    .set({ ...input, updatedAt })
-    .where(eq(event.id, prev.id))
+    .set({
+      title: input.title,
+      description: input.description,
+      organizer: input.organizer,
+      date: input.date,
+      updatedAt,
+    })
+    .where(and(eq(event.id, prev.id), eq(event.ownerId, ownerId)))
     .returning();
   return row;
 }

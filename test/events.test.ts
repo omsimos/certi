@@ -2,12 +2,18 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { getDb } from "../src/db";
 import { EventCodeTakenError, ForbiddenError, NotFoundError } from "../src/lib/errors";
-import { eventCodeSchema, type EventInput } from "../src/lib/schemas";
+import {
+  eventCodeSchema,
+  eventInputSchema,
+  eventUpdateSchema,
+  type EventInput,
+} from "../src/lib/schemas";
 import {
   createEvent,
   getEventByCode,
   getOwnedEvent,
   listEventsByOwner,
+  toPublicEvent,
   updateEvent,
 } from "../src/server/events";
 import { createTestUser } from "./helpers";
@@ -109,5 +115,48 @@ describe("events", () => {
     expect(eventCodeSchema.safeParse("MyEvent").success).toBe(false);
     expect(eventCodeSchema.safeParse("ab").success).toBe(false);
     expect(eventCodeSchema.safeParse("devfest-24").success).toBe(true);
+  });
+
+  it("rejects impossible dates without throwing", () => {
+    for (const d of ["2026-13-01", "2026-00-10", "2026-02-31", "2026-2-01"]) {
+      expect(eventInputSchema.shape.date.safeParse(d).success, d).toBe(false);
+    }
+    for (const d of ["2026-02-28", "2028-02-29"]) {
+      expect(eventInputSchema.shape.date.safeParse(d).success, d).toBe(true);
+    }
+  });
+
+  it("update schema strips code, ownerId and id", () => {
+    const parsed = eventUpdateSchema.parse({ ...update, code: "x-y-z", ownerId: "u", id: "e" });
+    expect(Object.keys(parsed).sort()).toEqual(["date", "description", "organizer", "title"]);
+  });
+
+  it("enforces length boundaries", () => {
+    const ok = makeInput();
+    const parse = (o: Partial<EventInput>) => eventInputSchema.safeParse({ ...ok, ...o }).success;
+    expect(parse({ title: "a" })).toBe(false);
+    expect(parse({ title: "ab" })).toBe(true);
+    expect(parse({ title: "a".repeat(60) })).toBe(true);
+    expect(parse({ title: "a".repeat(61) })).toBe(false);
+    expect(parse({ description: "a".repeat(24) })).toBe(false);
+    expect(parse({ description: "a".repeat(25) })).toBe(true);
+    expect(parse({ organizer: "a".repeat(40) })).toBe(true);
+    expect(parse({ organizer: "a".repeat(41) })).toBe(false);
+  });
+
+  it("toPublicEvent drops ownerId", async () => {
+    const a = await createTestUser(db);
+    const ev = await createEvent(db, a.id, makeInput());
+    const pub = toPublicEvent(ev);
+    expect("ownerId" in pub).toBe(false);
+    expect(pub.code).toBe(ev.code);
+  });
+
+  it("createEvent ignores stray keys on input", async () => {
+    const [a, b] = [await createTestUser(db), await createTestUser(db)];
+    const stray = { ...makeInput(), ownerId: b.id, id: "forced-id" } as EventInput;
+    const created = await createEvent(db, a.id, stray);
+    expect(created.ownerId).toBe(a.id);
+    expect(created.id).not.toBe("forced-id");
   });
 });

@@ -12,6 +12,7 @@ import {
   getEventByCode,
   getOwnedEvent,
   listEventsByOwner,
+  toPublicEvent,
   updateEvent,
 } from "@/server/events";
 
@@ -41,7 +42,10 @@ export const updateEventFn = createServerFn({ method: "POST" })
 
 export const getEventFn = createServerFn({ method: "GET" })
   .validator(codeInput)
-  .handler(({ data }) => getEventByCode(getDb(env.DB), data.code));
+  .handler(async ({ data }) => {
+    const row = await getEventByCode(getDb(env.DB), data.code);
+    return row ? toPublicEvent(row) : null;
+  });
 
 export const listMyEventsFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
