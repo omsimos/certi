@@ -3,7 +3,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Full hsl() colours (values ported from the legacy theme) so var(--x) works in color-mix and shadcn CSS. */
+/* Full hsl() colours (values ported from the original Next.js theme) so var(--x) works in color-mix and shadcn CSS. */
 :root {
   --background: hsl(0 0% 100%);
   --foreground: hsl(222.2 84% 4.9%);
@@ -58,7 +58,7 @@
   --accent: hsl(217.2 32.6% 17.5%);
   --accent-foreground: hsl(210 40% 98%);
 
-  /* Lighter than the legacy 30.6%: shadcn's destructive variant uses it as text. */
+  /* Lighter than the original Next.js theme's 30.6%: shadcn's destructive variant uses it as text. */
   --destructive: hsl(0 72% 55%);
   --destructive-foreground: hsl(210 40% 98%);
 

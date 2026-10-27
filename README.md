@@ -46,21 +46,21 @@ The app boots without OAuth credentials, but signing in needs them. A provider w
 
 ## Scripts
 
-| Script                      | What it does                                           |
-| --------------------------- | ------------------------------------------------------ |
-| `bun run dev`               | Vite dev server on port 3000 (runs in workerd)         |
-| `bun run build`             | Production build                                       |
-| `bun run preview`           | Build, then serve the production build locally         |
-| `bun run deploy`            | Build, then `wrangler deploy`                          |
-| `bun run lint`              | Run oxlint                                             |
-| `bun run format`            | Format with oxfmt                                      |
-| `bun run format:check`      | Check formatting without writing                       |
-| `bun run typecheck`         | Run `tsc --noEmit`                                     |
-| `bun run test`              | Run the Vitest suite once                              |
-| `bun run db:generate`       | Generate a Drizzle migration after a schema change     |
-| `bun run db:migrate:local`  | Apply migrations to the local D1 database              |
-| `bun run db:migrate:remote` | Apply migrations to the production D1 database         |
-| `bun run cf-typegen`        | Regenerate `worker-configuration.d.ts` from the config |
+| Script                      | What it does                                                                                                            |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `bun run dev`               | Vite dev server on port 3000 (runs in workerd)                                                                          |
+| `bun run build`             | Production build                                                                                                        |
+| `bun run preview`           | Build, then serve the production build locally                                                                          |
+| `bun run deploy`            | Build, then `wrangler deploy`                                                                                           |
+| `bun run lint`              | Run oxlint                                                                                                              |
+| `bun run format`            | Format with oxfmt                                                                                                       |
+| `bun run format:check`      | Check formatting without writing                                                                                        |
+| `bun run typecheck`         | Run `tsc --noEmit`                                                                                                      |
+| `bun run test`              | Run the Vitest suite once                                                                                               |
+| `bun run db:generate`       | Generate a Drizzle migration after a schema change                                                                      |
+| `bun run db:migrate:local`  | Apply migrations to the local D1 database                                                                               |
+| `bun run db:migrate:remote` | Apply migrations to the production D1 database                                                                          |
+| `bun run cf-typegen`        | Run `wrangler types --env-file .dev.vars.example` to regenerate binding and secret types in `worker-configuration.d.ts` |
 
 ## Deploying (first time)
 
@@ -84,12 +84,12 @@ The Worker deliberately refuses to start without `BETTER_AUTH_SECRET` and `BETTE
 
 ## Known limits
 
-- **CPU time.** Certificate PNGs render on the Worker and are cached in R2 per event version. The first render likely exceeds the Workers Free plan's 10 ms CPU limit (local estimate: about 17 ms warm, about 200 ms cold), so expect error 1102 on Free. Workers Paid ($5/month) is recommended.
+- **CPU time.** Certificate PNGs render on the Worker and are cached in R2 per event version. The first render likely exceeds the Workers Free plan's 10 ms CPU limit (a rough local estimate, measured in Node on a simplified card rather than in workerd, was about 17 ms warm and 200 ms cold), so expect error 1102 on Free. Workers Paid ($5/month) is recommended.
 - **Import size.** Attendee imports are capped at 2000 rows.
 
 ## 3D badge
 
-The badge uses three's WebGPU renderer and falls back to WebGL2. In dev, add `?webgl` to the badge URL to force the fallback, or `?debug` to show the physics colliders. The badge model (`public/models/tag.glb`) is a placeholder pending a license check.
+The badge uses three's WebGPU renderer and falls back to WebGL2. In dev, add `?webgl` to the badge URL to force the fallback, or `?debug` to show the physics colliders. The badge model (`public/models/tag.glb`) is Vercel's conference-badge model, downloaded from Vercel's asset CDN, and its license for reuse is unverified. Replace it with an Omsimos model if reuse isn't permitted.
 
 ## Contributing
 
