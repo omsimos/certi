@@ -54,6 +54,32 @@ describe("attendees", () => {
     expect(await listAttendees(db, a.id, ev.code)).toHaveLength(500);
   });
 
+  it.each([15, 16, 30, 31])("imports %i rows across statement boundaries", async (n) => {
+    const { a, ev } = await setup();
+    const rows = Array.from({ length: n }, (_, i) => ({
+      firstName: "F",
+      lastName: "L",
+      email: `b${i}@x.com`,
+    }));
+    expect(await importAttendees(db, a.id, ev.code, rows)).toEqual({ inserted: n, skipped: 0 });
+    expect(await listAttendees(db, a.id, ev.code)).toHaveLength(n);
+  });
+
+  // 2000 rows = 134 insert statements in one batch, the largest import the server fn accepts.
+  it("imports the 2000-row maximum in one batch", async () => {
+    const { a, ev } = await setup();
+    const rows = Array.from({ length: 2000 }, (_, i) => ({
+      firstName: "F",
+      lastName: "L",
+      email: `m${i}@x.com`,
+    }));
+    expect(await importAttendees(db, a.id, ev.code, rows)).toEqual({
+      inserted: 2000,
+      skipped: 0,
+    });
+    expect(await listAttendees(db, a.id, ev.code)).toHaveLength(2000);
+  });
+
   it("forbids non-owners", async () => {
     const { b, ev } = await setup();
     await expect(importAttendees(db, b.id, ev.code, two)).rejects.toBeInstanceOf(ForbiddenError);
