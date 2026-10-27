@@ -5,6 +5,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 
 import { getDb } from "@/db";
 import * as schema from "@/db/schema";
+import { requireEnv } from "@/lib/env";
 
 // A provider without credentials is left out so local dev boots without
 // OAuth apps; its sign-in button then fails at click time, not at import.
@@ -18,8 +19,8 @@ const github =
     : undefined;
 
 export const auth = betterAuth({
-  secret: env.BETTER_AUTH_SECRET,
-  baseURL: env.BETTER_AUTH_URL,
+  secret: requireEnv("BETTER_AUTH_SECRET", env.BETTER_AUTH_SECRET, import.meta.env.DEV),
+  baseURL: requireEnv("BETTER_AUTH_URL", env.BETTER_AUTH_URL, import.meta.env.DEV),
   database: drizzleAdapter(getDb(env.DB), { provider: "sqlite", schema }),
   socialProviders: { google, github },
   // Must stay last so it sees cookies set by other plugins.

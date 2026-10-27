@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "bun run build && vite preview",
     "deploy": "bun run build && wrangler deploy",
-    "cf-typegen": "wrangler types",
+    "cf-typegen": "wrangler types --env-file .dev.vars.example",
     "lint": "oxlint",
     "format": "oxfmt",
     "format:check": "oxfmt --check",

@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +43,11 @@ function AuthButton() {
         <DropdownMenuItem render={<Link to="/dashboard" />}>Dashboard</DropdownMenuItem>
         <DropdownMenuItem
           onClick={async () => {
-            await authClient.signOut();
+            const { error } = await authClient.signOut();
+            if (error) {
+              toast.error(error.message || "Could not sign out. Try again.");
+              return;
+            }
             await navigate({ to: "/" });
           }}
         >
