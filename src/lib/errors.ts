@@ -16,3 +16,9 @@ export function assertUser<U>(session: { user: U } | null | undefined): U {
   if (!session) throw new ForbiddenError("Sign in required");
   return session.user;
 }
+
+// Server-fn errors reach the client as plain `Error`s with `name` preserved,
+// so `instanceof` against the classes above does not work there.
+export function hasErrorName(err: unknown, ...names: string[]): boolean {
+  return err instanceof Error && names.includes(err.name);
+}

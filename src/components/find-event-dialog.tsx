@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -29,13 +29,12 @@ export function FindEventDialog() {
         <Button size="lg" className="text-md font-medium" onClick={() => setOpen(true)}>
           Find Event
         </Button>
-        {/* TODO(task-7): typed Link */}
         <Button
           size="lg"
           className="text-md font-medium"
           variant="secondary"
           nativeButton={false}
-          render={<a href="/dashboard/new" />}
+          render={<Link to="/dashboard/new" />}
         >
           Setup Event
         </Button>
