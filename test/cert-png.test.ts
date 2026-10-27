@@ -3,7 +3,13 @@ import { nanoid } from "nanoid";
 import { describe, expect, it, vi } from "vitest";
 import { getDb } from "../src/db";
 import { attendee } from "../src/db/schema";
-import { certPngKey, etagMatches, getCertificatePng } from "../src/server/cert-png";
+import {
+  certEtag,
+  certPngKey,
+  etagMatches,
+  getCertificatePng,
+  getCertificatePngWithKey,
+} from "../src/server/cert-png";
 import { updateEvent } from "../src/server/events";
 import { createTestEvent, createTestUser } from "./helpers";
 
@@ -91,13 +97,31 @@ describe("getCertificatePng", () => {
     expect(await env.BUCKET.get(certPngKey(id, ev.updatedAt))).toBeNull();
   });
 
-  it("builds the key from the attendee id and event version", () => {
-    expect(certPngKey("abc", new Date(1234))).toBe("certs/abc/1234.png");
+  it("skips the R2 read and the render when If-None-Match matches", async () => {
+    const { ev, id, deps, render } = await setup();
+    await getCertificatePng(deps, ev.code, id);
+    render.mockClear();
+    const get = vi.spyOn(env.BUCKET, "get");
+    const etag = certEtag(certPngKey(id, ev.updatedAt));
+
+    const hit = await getCertificatePngWithKey(deps, ev.code, id, { ifNoneMatch: etag });
+    expect(hit).toEqual({ png: null, key: certPngKey(id, ev.updatedAt) });
+    expect(get).not.toHaveBeenCalled();
+    expect(render).not.toHaveBeenCalled();
+
+    const miss = await getCertificatePngWithKey(deps, ev.code, id, { ifNoneMatch: '"stale"' });
+    expect(miss?.png).not.toBeNull();
+    expect(get).toHaveBeenCalledTimes(1);
+    get.mockRestore();
+  });
+
+  it("builds the key from the template version, attendee id and event version", () => {
+    expect(certPngKey("abc", new Date(1234))).toBe("certs/v1/abc/1234.png");
   });
 });
 
 describe("etagMatches", () => {
-  const etag = '"certs/a/1.png"';
+  const etag = '"certs/v1/a/1.png"';
   it("matches exact, weak, list and wildcard forms", () => {
     expect(etagMatches(etag, etag)).toBe(true);
     expect(etagMatches(`W/${etag}`, etag)).toBe(true);
@@ -107,6 +131,6 @@ describe("etagMatches", () => {
   it("rejects null, empty and different tags", () => {
     expect(etagMatches(null, etag)).toBe(false);
     expect(etagMatches("", etag)).toBe(false);
-    expect(etagMatches('"certs/a/2.png"', etag)).toBe(false);
+    expect(etagMatches('"certs/v1/a/2.png"', etag)).toBe(false);
   });
 });

@@ -4,7 +4,7 @@ import { env } from "cloudflare:workers";
 import { getDb } from "@/db";
 import { eventCodeSchema } from "@/lib/schemas";
 import { renderCertificatePng } from "@/server/cert-image";
-import { etagMatches, getCertificatePngWithKey } from "@/server/cert-png";
+import { certEtag, getCertificatePngWithKey } from "@/server/cert-png";
 
 const ATTENDEE_ID = /^[A-Za-z0-9_-]{10}$/;
 
@@ -26,6 +26,7 @@ export const Route = createFileRoute("/api/cert/$code/$attendeeId")({
             { db: getDb(env.DB), bucket: env.BUCKET, render: renderCertificatePng },
             params.code,
             params.attendeeId,
+            { ifNoneMatch: request.headers.get("if-none-match") },
           );
         } catch (error) {
           // Render and font-fetch failures are usually transient; nothing was cached.
@@ -37,17 +38,13 @@ export const Route = createFileRoute("/api/cert/$code/$attendeeId")({
         }
         if (!result) return new Response("Not found", { status: 404 });
 
-        // The key embeds the event version, so it changes exactly when the image does.
-        // Clients revalidate every time: that costs one D1 + R2 lookup, never a render.
-        const etag = `"${result.key}"`;
+        // Clients revalidate every time: a match costs one D1 lookup, never an R2 read or render.
         const headers = new Headers({
           "content-type": "image/png",
           "cache-control": "public, max-age=0, must-revalidate",
-          etag,
+          etag: certEtag(result.key),
         });
-        if (etagMatches(request.headers.get("if-none-match"), etag)) {
-          return new Response(null, { status: 304, headers });
-        }
+        if (result.png === null) return new Response(null, { status: 304, headers });
         if (new URL(request.url).searchParams.get("download") === "1") {
           headers.set(
             "content-disposition",

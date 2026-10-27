@@ -11,10 +11,19 @@ export type CertificateData = {
   attendeeId: string;
 };
 
+// Bump when cert-image.tsx changes: cached PNGs are keyed on event data only, so
+// without a new version they would keep serving the old design.
+export const CERT_TEMPLATE_VERSION = 1;
+
 // Keyed on the event's updatedAt so editing an event invalidates every certificate
 // without having to enumerate and delete objects.
 export function certPngKey(attendeeId: string, eventUpdatedAt: Date): string {
-  return `certs/${attendeeId}/${eventUpdatedAt.getTime()}.png`;
+  return `certs/v${CERT_TEMPLATE_VERSION}/${attendeeId}/${eventUpdatedAt.getTime()}.png`;
+}
+
+// The key embeds the template and event versions, so it changes exactly when the image does.
+export function certEtag(key: string): string {
+  return `"${key}"`;
 }
 
 type Deps = {
@@ -32,16 +41,19 @@ export async function getCertificatePng(
   return (await getCertificatePngWithKey(deps, code, attendeeId))?.png ?? null;
 }
 
-// The route also needs the R2 key, which doubles as the response ETag.
+// The route also needs the R2 key, which doubles as the response ETag. When
+// `ifNoneMatch` matches it, `png` is null and neither R2 nor the renderer is touched.
 export async function getCertificatePngWithKey(
   deps: Deps,
   code: string,
   attendeeId: string,
-): Promise<{ png: ArrayBuffer; key: string } | null> {
+  opts: { ifNoneMatch?: string | null } = {},
+): Promise<{ png: ArrayBuffer | null; key: string } | null> {
   const cert = await getCertificate(deps.db, code, attendeeId);
   if (!cert) return null;
 
   const key = certPngKey(attendeeId, cert.event.updatedAt);
+  if (etagMatches(opts.ifNoneMatch ?? null, certEtag(key))) return { png: null, key };
   const cached = await deps.bucket.get(key);
   if (cached) return { png: await cached.arrayBuffer(), key };
 
