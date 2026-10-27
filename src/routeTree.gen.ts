@@ -18,6 +18,7 @@ import { Route as DashboardNewRouteImport } from './routes/dashboard/new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as EventCodeIndexRouteImport } from './routes/event/$code/index'
 import { Route as ApiCertCodeAttendeeIdRouteImport } from './routes/api/cert/$code.$attendeeId'
+import { Route as EventCodeBadgeAttendeeIdRouteImport } from './routes/event/$code/badge.$attendeeId'
 import { Route as EventCodeCertAttendeeIdRouteImport } from './routes/event/$code/cert.$attendeeId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -65,6 +66,12 @@ const ApiCertCodeAttendeeIdRoute = ApiCertCodeAttendeeIdRouteImport.update({
   path: '/api/cert/$code/$attendeeId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EventCodeBadgeAttendeeIdRoute =
+  EventCodeBadgeAttendeeIdRouteImport.update({
+    id: '/event/$code/badge/$attendeeId',
+    path: '/event/$code/badge/$attendeeId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const EventCodeCertAttendeeIdRoute = EventCodeCertAttendeeIdRouteImport.update({
   id: '/event/$code/cert/$attendeeId',
   path: '/event/$code/cert/$attendeeId',
@@ -81,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/event/$code/': typeof EventCodeIndexRoute
   '/api/cert/$code/$attendeeId': typeof ApiCertCodeAttendeeIdRoute
+  '/event/$code/badge/$attendeeId': typeof EventCodeBadgeAttendeeIdRoute
   '/event/$code/cert/$attendeeId': typeof EventCodeCertAttendeeIdRoute
 }
 export interface FileRoutesByTo {
@@ -92,6 +100,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/event/$code': typeof EventCodeIndexRoute
   '/api/cert/$code/$attendeeId': typeof ApiCertCodeAttendeeIdRoute
+  '/event/$code/badge/$attendeeId': typeof EventCodeBadgeAttendeeIdRoute
   '/event/$code/cert/$attendeeId': typeof EventCodeCertAttendeeIdRoute
 }
 export interface FileRoutesById {
@@ -105,6 +114,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/event/$code/': typeof EventCodeIndexRoute
   '/api/cert/$code/$attendeeId': typeof ApiCertCodeAttendeeIdRoute
+  '/event/$code/badge/$attendeeId': typeof EventCodeBadgeAttendeeIdRoute
   '/event/$code/cert/$attendeeId': typeof EventCodeCertAttendeeIdRoute
 }
 export interface FileRouteTypes {
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/event/$code/'
     | '/api/cert/$code/$attendeeId'
+    | '/event/$code/badge/$attendeeId'
     | '/event/$code/cert/$attendeeId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/event/$code'
     | '/api/cert/$code/$attendeeId'
+    | '/event/$code/badge/$attendeeId'
     | '/event/$code/cert/$attendeeId'
   id:
     | '__root__'
@@ -142,6 +154,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/event/$code/'
     | '/api/cert/$code/$attendeeId'
+    | '/event/$code/badge/$attendeeId'
     | '/event/$code/cert/$attendeeId'
   fileRoutesById: FileRoutesById
 }
@@ -152,6 +165,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   EventCodeIndexRoute: typeof EventCodeIndexRoute
   ApiCertCodeAttendeeIdRoute: typeof ApiCertCodeAttendeeIdRoute
+  EventCodeBadgeAttendeeIdRoute: typeof EventCodeBadgeAttendeeIdRoute
   EventCodeCertAttendeeIdRoute: typeof EventCodeCertAttendeeIdRoute
 }
 
@@ -220,6 +234,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCertCodeAttendeeIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/event/$code/badge/$attendeeId': {
+      id: '/event/$code/badge/$attendeeId'
+      path: '/event/$code/badge/$attendeeId'
+      fullPath: '/event/$code/badge/$attendeeId'
+      preLoaderRoute: typeof EventCodeBadgeAttendeeIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/event/$code/cert/$attendeeId': {
       id: '/event/$code/cert/$attendeeId'
       path: '/event/$code/cert/$attendeeId'
@@ -253,6 +274,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   EventCodeIndexRoute: EventCodeIndexRoute,
   ApiCertCodeAttendeeIdRoute: ApiCertCodeAttendeeIdRoute,
+  EventCodeBadgeAttendeeIdRoute: EventCodeBadgeAttendeeIdRoute,
   EventCodeCertAttendeeIdRoute: EventCodeCertAttendeeIdRoute,
 }
 export const routeTree = rootRouteImport

@@ -76,8 +76,10 @@ function EventLanding() {
         });
         return;
       }
-      // TODO(task-10): switch to a typed navigation once /event/$code/badge/$attendeeId exists.
-      await navigate({ href: `/event/${event.code}/badge/${found.id}` });
+      await navigate({
+        to: "/event/$code/badge/$attendeeId",
+        params: { code: event.code, attendeeId: found.id },
+      });
     } catch {
       toast.error("Something went wrong. Please try again.");
     }
