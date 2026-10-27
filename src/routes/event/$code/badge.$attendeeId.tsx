@@ -1,5 +1,5 @@
 import { ClientOnly, createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
+import { Component, lazy, Suspense, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -41,46 +41,90 @@ function BadgeViewer() {
 
   if (!isDesktop) {
     return (
-      <main className="container">
-        <div className="h-screen pt-40">
-          <h1 className="bg-zinc-800 from-foreground bg-clip-text text-[12vw] font-bold tracking-tighter text-transparent md:text-8xl dark:bg-linear-to-b dark:to-zinc-400">
-            omsimos.com
-          </h1>
-          <p className="max-w-2xl text-muted-foreground md:text-xl">
-            Mobile version of 3D badge is{" "}
-            <span className="font-medium text-foreground">under heavy development.</span> Changes
-            and updates may happen frequently as we work to improve its functionality and features.
-          </p>
-          <Button
-            className="mt-8"
-            variant="outline"
-            nativeButton={false}
-            render={<Link to="/event/$code/cert/$attendeeId" params={{ code, attendeeId }} />}
-          >
-            View certificate
-          </Button>
-        </div>
-      </main>
+      <BadgeFallback code={code} attendeeId={attendeeId}>
+        Mobile version of 3D badge is{" "}
+        <span className="font-medium text-foreground">under heavy development.</span> Changes and
+        updates may happen frequently as we work to improve its functionality and features.
+      </BadgeFallback>
     );
   }
 
+  // The boundary wraps the whole page so the fallback replaces it instead of nesting inside.
   return (
-    <main className="h-screen">
-      <div className="absolute inset-0 flex h-screen flex-col items-center pt-40">
-        <h1 className="bg-zinc-800 from-foreground bg-clip-text text-center text-[10vw] font-bold tracking-tighter text-transparent md:text-8xl dark:bg-linear-to-b dark:to-zinc-400">
+    <BadgeErrorBoundary
+      fallback={
+        <BadgeFallback code={code} attendeeId={attendeeId}>
+          The 3D badge could not be loaded on this device or browser.
+        </BadgeFallback>
+      }
+    >
+      <main className="h-screen">
+        <div className="absolute inset-0 flex h-screen flex-col items-center pt-40">
+          <h1 className="bg-zinc-800 from-foreground bg-clip-text text-center text-[10vw] font-bold tracking-tighter text-transparent md:text-8xl dark:bg-linear-to-b dark:to-zinc-400">
+            omsimos.com
+          </h1>
+          <p className="max-w-2xl text-center text-muted-foreground md:text-xl">
+            This project is{" "}
+            <span className="font-medium text-foreground">under heavy development.</span> Changes
+            and updates may happen frequently as we work to improve its functionality and features.
+          </p>
+        </div>
+        <Suspense fallback={<BadgeSkeleton />}>
+          <Badge3D attendee={attendee} />
+        </Suspense>
+      </main>
+    </BadgeErrorBoundary>
+  );
+}
+
+function BadgeFallback({
+  code,
+  attendeeId,
+  children,
+}: {
+  code: string;
+  attendeeId: string;
+  children: ReactNode;
+}) {
+  return (
+    <main className="container">
+      <div className="h-screen pt-40">
+        <h1 className="bg-zinc-800 from-foreground bg-clip-text text-[12vw] font-bold tracking-tighter text-transparent md:text-8xl dark:bg-linear-to-b dark:to-zinc-400">
           omsimos.com
         </h1>
-        <p className="max-w-2xl text-center text-muted-foreground md:text-xl">
-          This project is{" "}
-          <span className="font-medium text-foreground">under heavy development.</span> Changes and
-          updates may happen frequently as we work to improve its functionality and features.
-        </p>
+        <p className="max-w-2xl text-muted-foreground md:text-xl">{children}</p>
+        <Button
+          className="mt-8"
+          variant="outline"
+          nativeButton={false}
+          render={<Link to="/event/$code/cert/$attendeeId" params={{ code, attendeeId }} />}
+        >
+          View certificate
+        </Button>
       </div>
-      <Suspense fallback={<BadgeSkeleton />}>
-        <Badge3D attendee={attendee} />
-      </Suspense>
     </main>
   );
+}
+
+// WebGPU/WebGL init failures and a failed lazy chunk load both land here, so the
+// page degrades to the certificate link instead of a blank screen.
+class BadgeErrorBoundary extends Component<
+  { fallback: ReactNode; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("3D badge failed to render", error);
+  }
+
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
 }
 
 function BadgeSkeleton() {
