@@ -1,5 +1,5 @@
 import { createMiddleware, createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
+import { getRequestHeaders, getRequestUrl } from "@tanstack/react-start/server";
 import { env } from "cloudflare:workers";
 import { z } from "zod";
 
@@ -33,6 +33,9 @@ export const authMiddleware = createMiddleware({ type: "function" }).server(asyn
   const session = await auth.api.getSession({ headers: getRequestHeaders() });
   return next({ context: { user: assertUser(session) } });
 });
+
+// Open Graph images must be absolute URLs, and the origin differs per deployment/preview.
+export const getOriginFn = createServerFn({ method: "GET" }).handler(() => getRequestUrl().origin);
 
 export const getSessionFn = createServerFn({ method: "GET" }).handler(async () => {
   const session = await auth.api.getSession({ headers: getRequestHeaders() });

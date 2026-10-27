@@ -16,6 +16,8 @@ import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardCodeRouteImport } from './routes/dashboard/$code'
 import { Route as DashboardNewRouteImport } from './routes/dashboard/new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as EventCodeIndexRouteImport } from './routes/event/$code/index'
+import { Route as EventCodeCertAttendeeIdRouteImport } from './routes/event/$code/cert.$attendeeId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +54,16 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EventCodeIndexRoute = EventCodeIndexRouteImport.update({
+  id: '/event/$code/',
+  path: '/event/$code/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventCodeCertAttendeeIdRoute = EventCodeCertAttendeeIdRouteImport.update({
+  id: '/event/$code/cert/$attendeeId',
+  path: '/event/$code/cert/$attendeeId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +73,8 @@ export interface FileRoutesByFullPath {
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/event/$code/': typeof EventCodeIndexRoute
+  '/event/$code/cert/$attendeeId': typeof EventCodeCertAttendeeIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -69,6 +83,8 @@ export interface FileRoutesByTo {
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboard': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/event/$code': typeof EventCodeIndexRoute
+  '/event/$code/cert/$attendeeId': typeof EventCodeCertAttendeeIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -79,6 +95,8 @@ export interface FileRoutesById {
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/event/$code/': typeof EventCodeIndexRoute
+  '/event/$code/cert/$attendeeId': typeof EventCodeCertAttendeeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -90,6 +108,8 @@ export interface FileRouteTypes {
     | '/dashboard/new'
     | '/dashboard/'
     | '/api/auth/$'
+    | '/event/$code/'
+    | '/event/$code/cert/$attendeeId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -98,6 +118,8 @@ export interface FileRouteTypes {
     | '/dashboard/new'
     | '/dashboard'
     | '/api/auth/$'
+    | '/event/$code'
+    | '/event/$code/cert/$attendeeId'
   id:
     | '__root__'
     | '/'
@@ -107,6 +129,8 @@ export interface FileRouteTypes {
     | '/dashboard/new'
     | '/dashboard/'
     | '/api/auth/$'
+    | '/event/$code/'
+    | '/event/$code/cert/$attendeeId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -114,6 +138,8 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   LoginRoute: typeof LoginRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  EventCodeIndexRoute: typeof EventCodeIndexRoute
+  EventCodeCertAttendeeIdRoute: typeof EventCodeCertAttendeeIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -167,6 +193,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/event/$code/': {
+      id: '/event/$code/'
+      path: '/event/$code'
+      fullPath: '/event/$code/'
+      preLoaderRoute: typeof EventCodeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/event/$code/cert/$attendeeId': {
+      id: '/event/$code/cert/$attendeeId'
+      path: '/event/$code/cert/$attendeeId'
+      fullPath: '/event/$code/cert/$attendeeId'
+      preLoaderRoute: typeof EventCodeCertAttendeeIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -191,6 +231,8 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  EventCodeIndexRoute: EventCodeIndexRoute,
+  EventCodeCertAttendeeIdRoute: EventCodeCertAttendeeIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

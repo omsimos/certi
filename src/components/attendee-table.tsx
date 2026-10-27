@@ -34,7 +34,6 @@ export function AttendeeTable({ code, attendees }: { code: string; attendees: Ro
   const [deleting, setDeleting] = useState(false);
 
   async function copyLink(attendee: Row) {
-    // A plain string: the certificate route is added in a later task.
     const url = `${location.origin}/event/${code}/cert/${attendee.id}`;
     try {
       await navigator.clipboard.writeText(url);

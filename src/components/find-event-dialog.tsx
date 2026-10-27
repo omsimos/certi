@@ -76,8 +76,7 @@ function SearchEventForm({ onNavigate }: { onNavigate: () => void }) {
     const trimmed = code.trim().toLowerCase();
     if (!trimmed) return;
     onNavigate();
-    // TODO(task-8): the typed `/event/$code` route doesn't exist yet, so the typed `to` can't be used.
-    void navigate({ href: `/event/${encodeURIComponent(trimmed)}` });
+    void navigate({ to: "/event/$code", params: { code: trimmed } });
   };
 
   return (
