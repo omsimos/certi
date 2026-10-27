@@ -49,7 +49,12 @@ const nameSchema = (label: string) =>
 export const attendeeInputSchema = z.object({
   firstName: nameSchema("First name"),
   lastName: nameSchema("Last name"),
-  email: z.string().trim().toLowerCase().pipe(z.email("Invalid email")),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(254, "Email is too long")
+    .pipe(z.email("Invalid email")),
 });
 
 export const MAX_ATTENDEES_PER_IMPORT = 2000;
