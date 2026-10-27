@@ -1,7 +1,7 @@
-import { cloudflareTest } from "@cloudflare/vitest-plugin";
+import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 import { defineConfig } from "vitest/config";
 
-export default defineConfig({
+export default defineConfig(async () => ({
   resolve: { tsconfigPaths: true },
   plugins: [
     cloudflareTest({
@@ -11,10 +11,12 @@ export default defineConfig({
         compatibilityFlags: ["nodejs_compat"],
         d1Databases: ["DB"],
         r2Buckets: ["BUCKET"],
+        bindings: { TEST_MIGRATIONS: await readD1Migrations("./drizzle") },
       },
     }),
   ],
   test: {
     include: ["test/**/*.test.ts"],
+    setupFiles: ["./test/setup.ts"],
   },
-});
+}));
