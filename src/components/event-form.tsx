@@ -54,7 +54,10 @@ export function EventForm({ mode, event }: EventFormProps) {
         toast.error("You can't edit this event");
         return;
       }
-      // Failed server-side validation arrives as raw zod issue JSON; don't show that.
+      if (hasErrorName(err, "ValidationError")) {
+        toast.error("Some fields are invalid. Check the form and try again.");
+        return;
+      }
       toast.error("Something went wrong. Please try again.");
     }
   }

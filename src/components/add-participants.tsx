@@ -117,7 +117,9 @@ export function AddParticipants({ code }: { code: string }) {
       toast.error(
         hasErrorName(err, "ForbiddenError", "NotFoundError")
           ? "You can't change this event"
-          : "Something went wrong. Please try again.",
+          : hasErrorName(err, "ValidationError")
+            ? "Some rows are invalid. Check the data and try again."
+            : "Something went wrong. Please try again.",
       );
     } finally {
       setImporting(false);

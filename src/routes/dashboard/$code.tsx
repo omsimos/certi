@@ -25,8 +25,8 @@ export const Route = createFileRoute("/dashboard/$code")({
       ]);
       return { event, attendees };
     } catch (err) {
-      // A missing event and someone else's event look the same to the caller.
-      if (hasErrorName(err, "ForbiddenError", "NotFoundError")) throw notFound();
+      // A missing event, someone else's event and a malformed code all look the same to the caller.
+      if (hasErrorName(err, "ForbiddenError", "NotFoundError", "ValidationError")) throw notFound();
       throw err;
     }
   },
