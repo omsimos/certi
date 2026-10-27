@@ -1,0 +1,7 @@
+# Copy to .dev.vars for local dev. In production use `wrangler secret put <NAME>`.
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=

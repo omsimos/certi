@@ -1,26 +1,31 @@
 {
+  "include": ["src", "test", "*.ts"],
+  "exclude": ["node_modules", "legacy"],
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "target": "ES2022",
+    "jsx": "react-jsx",
+    "module": "ESNext",
     "paths": {
       "@/*": ["./src/*"]
-    }
-  },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+    },
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": [
+      "./worker-configuration.d.ts",
+      "@cloudflare/vitest-plugin/types",
+      "node",
+      "vite/client"
+    ],
+
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  }
 }
