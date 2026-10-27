@@ -53,6 +53,17 @@ export async function getCertificatePngWithKey(
     date: formatEventDate(cert.event.date),
     attendeeId,
   });
+  // An empty body would be cached under this key until the event is next edited.
+  if (png.byteLength === 0) throw new Error("Certificate render produced an empty image");
   await deps.bucket.put(key, png, { httpMetadata: { contentType: "image/png" } });
   return { png, key };
+}
+
+// If-None-Match may carry a list, weak validators (W/"...") or `*`.
+export function etagMatches(header: string | null, etag: string): boolean {
+  if (!header) return false;
+  return header.split(",").some((part) => {
+    const tag = part.trim().replace(/^W\//, "");
+    return tag === "*" || tag === etag;
+  });
 }

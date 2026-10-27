@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 import { describe, expect, it, vi } from "vitest";
 import { getDb } from "../src/db";
 import { attendee } from "../src/db/schema";
-import { certPngKey, getCertificatePng } from "../src/server/cert-png";
+import { certPngKey, etagMatches, getCertificatePng } from "../src/server/cert-png";
 import { updateEvent } from "../src/server/events";
 import { createTestEvent, createTestUser } from "./helpers";
 
@@ -71,7 +71,42 @@ describe("getCertificatePng", () => {
     });
   });
 
+  it("throws and caches nothing when render returns an empty image", async () => {
+    const { ev, id, deps } = await setup();
+    const empty = vi.fn(async () => new ArrayBuffer(0));
+    await expect(getCertificatePng({ ...deps, render: empty }, ev.code, id)).rejects.toThrow(
+      /empty/,
+    );
+    expect(await env.BUCKET.get(certPngKey(id, ev.updatedAt))).toBeNull();
+  });
+
+  it("does not cache when render fails", async () => {
+    const { ev, id, deps } = await setup();
+    const failing = vi.fn(async () => {
+      throw new Error("font fetch failed");
+    });
+    await expect(getCertificatePng({ ...deps, render: failing }, ev.code, id)).rejects.toThrow(
+      "font fetch failed",
+    );
+    expect(await env.BUCKET.get(certPngKey(id, ev.updatedAt))).toBeNull();
+  });
+
   it("builds the key from the attendee id and event version", () => {
     expect(certPngKey("abc", new Date(1234))).toBe("certs/abc/1234.png");
+  });
+});
+
+describe("etagMatches", () => {
+  const etag = '"certs/a/1.png"';
+  it("matches exact, weak, list and wildcard forms", () => {
+    expect(etagMatches(etag, etag)).toBe(true);
+    expect(etagMatches(`W/${etag}`, etag)).toBe(true);
+    expect(etagMatches(`"other", W/${etag} , "x"`, etag)).toBe(true);
+    expect(etagMatches("*", etag)).toBe(true);
+  });
+  it("rejects null, empty and different tags", () => {
+    expect(etagMatches(null, etag)).toBe(false);
+    expect(etagMatches("", etag)).toBe(false);
+    expect(etagMatches('"certs/a/2.png"', etag)).toBe(false);
   });
 });

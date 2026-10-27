@@ -88,6 +88,7 @@ function Certificate({
         height: "100%",
         padding: 40,
         backgroundColor: "#ffffff",
+        // "sans serif" is the name @cf-wasm/og gives its bundled default font.
         fontFamily: "Geist, Noto Sans SC, sans serif",
       }}
     >
@@ -158,7 +159,6 @@ function Certificate({
             width: 150,
             borderLeft: `3px dashed ${PAPER}`,
             marginRight: 40,
-            paddingLeft: 0,
           }}
         >
           <div
