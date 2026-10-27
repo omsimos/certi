@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
+    "@cf-wasm/og": "^0.5.0",
     "@hookform/resolvers": "^5",
     "@tanstack/react-router": "1.170.46",
     "@tanstack/react-start": "1.169.4",
