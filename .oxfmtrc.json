@@ -5,7 +5,6 @@
     "functions": ["cn", "cva", "clsx"]
   },
   "ignorePatterns": [
-    "legacy",
     "dist",
     "docs",
     "public",

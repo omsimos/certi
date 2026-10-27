@@ -2,5 +2,5 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["react", "typescript", "import"],
   "categories": { "correctness": "error" },
-  "ignorePatterns": ["legacy", "dist", "worker-configuration.d.ts", "src/routeTree.gen.ts"]
+  "ignorePatterns": ["dist", "worker-configuration.d.ts", "src/routeTree.gen.ts"]
 }

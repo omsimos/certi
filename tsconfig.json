@@ -1,6 +1,6 @@
 {
   "include": ["src", "test", "*.ts"],
-  "exclude": ["node_modules", "legacy"],
+  "exclude": ["node_modules"],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",
