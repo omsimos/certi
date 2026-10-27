@@ -6,7 +6,20 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { auth } from "@/lib/auth";
 import { assertUser } from "@/lib/errors";
-import { eventCodeSchema, eventInputSchema, eventUpdateSchema } from "@/lib/schemas";
+import {
+  attendeeInputSchema,
+  eventCodeSchema,
+  eventInputSchema,
+  eventUpdateSchema,
+  MAX_ATTENDEES_PER_IMPORT,
+} from "@/lib/schemas";
+import {
+  deleteAttendee,
+  findAttendeeByEmail,
+  getCertificate,
+  importAttendees,
+  listAttendees,
+} from "@/server/attendees";
 import {
   createEvent,
   getEventByCode,
@@ -55,3 +68,57 @@ export const getOwnedEventFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator(codeInput)
   .handler(({ data, context }) => getOwnedEvent(getDb(env.DB), context.user.id, data.code));
+
+export const importAttendeesFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      code: eventCodeSchema,
+      attendees: z.array(attendeeInputSchema).max(MAX_ATTENDEES_PER_IMPORT),
+    }),
+  )
+  .handler(({ data, context }) =>
+    importAttendees(getDb(env.DB), context.user.id, data.code, data.attendees),
+  );
+
+export const listAttendeesFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator(codeInput)
+  .handler(({ data, context }) => listAttendees(getDb(env.DB), context.user.id, data.code));
+
+export const deleteAttendeeFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({ code: eventCodeSchema, attendeeId: z.string().min(1).max(64) }))
+  .handler(({ data, context }) =>
+    deleteAttendee(getDb(env.DB), context.user.id, data.code, data.attendeeId),
+  );
+
+// The public lookups below validate loosely and re-check inside the handler, so a
+// malformed code, email or id yields `null` ("not found") rather than a thrown error.
+const publicEmailSchema = z.string().trim().toLowerCase().pipe(z.email());
+const attendeeIdSchema = z.string().regex(/^[A-Za-z0-9_-]{10}$/);
+
+export const findAttendeeFn = createServerFn({ method: "POST" })
+  .validator(z.object({ code: z.string().max(64), email: z.string().max(320) }))
+  .handler(async ({ data }) => {
+    const code = eventCodeSchema.safeParse(data.code);
+    const email = publicEmailSchema.safeParse(data.email);
+    if (!code.success || !email.success) return null;
+    return findAttendeeByEmail(getDb(env.DB), code.data, email.data);
+  });
+
+// Certificate pages are shared publicly, so the email and ownerId never leave the server.
+export const getCertificateFn = createServerFn({ method: "GET" })
+  .validator(z.object({ code: z.string().max(64), attendeeId: z.string().max(64) }))
+  .handler(async ({ data }) => {
+    const code = eventCodeSchema.safeParse(data.code);
+    const id = attendeeIdSchema.safeParse(data.attendeeId);
+    if (!code.success || !id.success) return null;
+    const cert = await getCertificate(getDb(env.DB), code.data, id.data);
+    if (!cert) return null;
+    const { id: attendeeId, firstName, lastName } = cert.attendee;
+    return {
+      attendee: { id: attendeeId, firstName, lastName },
+      event: toPublicEvent(cert.event),
+    };
+  });

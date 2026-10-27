@@ -25,5 +25,21 @@ export const eventInputSchema = z.object({
 
 export const eventUpdateSchema = eventInputSchema.omit({ code: true });
 
+const nameSchema = (label: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, `${label} is required`)
+    .max(60, `${label} must be at most 60 characters`);
+
+export const attendeeInputSchema = z.object({
+  firstName: nameSchema("First name"),
+  lastName: nameSchema("Last name"),
+  email: z.string().trim().toLowerCase().pipe(z.email("Invalid email")),
+});
+
+export const MAX_ATTENDEES_PER_IMPORT = 2000;
+
 export type EventInput = z.infer<typeof eventInputSchema>;
 export type EventUpdate = z.infer<typeof eventUpdateSchema>;
+export type AttendeeInput = z.infer<typeof attendeeInputSchema>;
