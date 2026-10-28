@@ -8,6 +8,7 @@ import { ForbiddenError, NotFoundError, ValidationError } from "../src/lib/error
 import {
   badgeImageKey,
   getBadgeImage,
+  getBadgeImageKey,
   MAX_BADGE_IMAGE_BYTES,
   parseBadgeImageUpload,
   saveBadgeImage,
@@ -44,6 +45,15 @@ describe("saveBadgeImage", () => {
   it("returns null from getBadgeImage before an upload", async () => {
     const { e, id } = await setup();
     expect(await getBadgeImage(db, bucket, e.code, id)).toBeNull();
+  });
+
+  it("scopes the key lookup by event code", async () => {
+    const { u, e, id } = await setup();
+    const other = await setup();
+    await saveBadgeImage(db, bucket, u.id, e.code, id, jpeg(), e.updatedAt.getTime());
+    expect(await getBadgeImageKey(db, e.code, id)).toBe(badgeImageKey(id, e.updatedAt));
+    expect(await getBadgeImageKey(db, other.e.code, id)).toBeNull();
+    expect(await getBadgeImage(db, bucket, other.e.code, id)).toBeNull();
   });
 
   it("stores the image, sets the version and serves it", async () => {

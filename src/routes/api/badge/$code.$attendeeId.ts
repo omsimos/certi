@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 
 import { getDb } from "@/db";
 import { eventCodeSchema } from "@/lib/schemas";
-import { attendeeIdSchema, getBadgeImage } from "@/server/badge-images";
+import { attendeeIdSchema, getBadgeImageKey } from "@/server/badge-images";
 
 export const Route = createFileRoute("/api/badge/$code/$attendeeId")({
   server: {
@@ -15,21 +15,22 @@ export const Route = createFileRoute("/api/badge/$code/$attendeeId")({
         ) {
           return new Response("Not found", { status: 404 });
         }
-        const img = await getBadgeImage(getDb(env.DB), env.BUCKET, params.code, params.attendeeId);
-        if (!img) return new Response("Not found", { status: 404 });
+        const key = await getBadgeImageKey(getDb(env.DB), params.code, params.attendeeId);
+        if (!key) return new Response("Not found", { status: 404 });
 
         // Keys embed the render version, so the key alone identifies the bytes; any ?v= is ignored.
         const headers = new Headers({
           "content-type": "image/jpeg",
           "cache-control": "public, max-age=0, must-revalidate",
-          etag: `"${img.key}"`,
+          etag: `"${key}"`,
         });
         const inm = request.headers.get("if-none-match");
-        if (inm && inm.split(",").some((t) => t.trim().replace(/^W\//, "") === `"${img.key}"`)) {
-          void img.body.cancel();
+        if (inm && inm.split(",").some((t) => t.trim().replace(/^W\//, "") === `"${key}"`)) {
           return new Response(null, { status: 304, headers });
         }
-        return new Response(img.body, { headers });
+        const obj = await env.BUCKET.get(key);
+        if (!obj) return new Response("Not found", { status: 404 });
+        return new Response(obj.body, { headers });
       },
     },
   },

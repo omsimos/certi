@@ -82,19 +82,28 @@ export async function saveBadgeImage(
   if (prev.key && prev.key !== key) await bucket.delete(prev.key);
 }
 
-export async function getBadgeImage(
+export async function getBadgeImageKey(
   db: DB,
-  bucket: R2Bucket,
   code: string,
   attendeeId: string,
-): Promise<{ key: string; body: ReadableStream } | null> {
+): Promise<string | null> {
   const [row] = await db
     .select({ key: attendee.badgeImageKey })
     .from(attendee)
     .innerJoin(event, eq(attendee.eventId, event.id))
     .where(and(eq(event.code, code), eq(attendee.id, attendeeId)))
     .limit(1);
-  if (!row?.key) return null;
-  const obj = await bucket.get(row.key);
-  return obj ? { key: row.key, body: obj.body } : null;
+  return row?.key ?? null;
+}
+
+export async function getBadgeImage(
+  db: DB,
+  bucket: R2Bucket,
+  code: string,
+  attendeeId: string,
+): Promise<{ key: string; body: ReadableStream } | null> {
+  const key = await getBadgeImageKey(db, code, attendeeId);
+  if (!key) return null;
+  const obj = await bucket.get(key);
+  return obj ? { key, body: obj.body } : null;
 }
