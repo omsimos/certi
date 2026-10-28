@@ -16,6 +16,12 @@ export class ValidationError extends Error {
   override name = "ValidationError";
 }
 
+// Deleting an attendee whose badge email is still scheduled must cancel it first,
+// or they'd later get an email whose link 404s.
+export class ScheduledEmailCancelError extends Error {
+  override name = "ScheduledEmailCancelError";
+}
+
 export function assertUser<U>(session: { user: U } | null | undefined): U {
   if (!session) throw new ForbiddenError("Sign in required");
   return session.user;

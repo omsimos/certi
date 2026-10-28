@@ -8,6 +8,11 @@
     "enabled": true,
   },
   "upload_source_maps": true,
+  // Secrets RESEND_API_KEY and RESEND_FROM are set with `wrangler secret put`.
+  "vars": {
+    "EMAIL_MODE": "resend",
+    "RESEND_DAILY_LIMIT": "100",
+  },
   "d1_databases": [
     {
       "binding": "DB",

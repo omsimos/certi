@@ -5,6 +5,7 @@ import {
   EventCodeTakenError,
   ForbiddenError,
   NotFoundError,
+  ScheduledEmailCancelError,
   ValidationError,
 } from "../src/lib/errors";
 import { sanitizeError } from "../src/server/sanitize-error";
@@ -15,6 +16,10 @@ describe("sanitizeError", () => {
     ["ForbiddenError", new ForbiddenError("Sign in required")],
     ["EventCodeTakenError", new EventCodeTakenError("Code taken")],
     ["ValidationError", new ValidationError("Logo must be a PNG")],
+    [
+      "ScheduledEmailCancelError",
+      new ScheduledEmailCancelError("Couldn't cancel the scheduled email. Try again."),
+    ],
   ])("keeps name and message of %s but drops stack and cause", (name, original) => {
     (original as Error & { cause?: unknown }).cause = new Error("Failed query: select ...");
     const out = sanitizeError(original);

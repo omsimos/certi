@@ -11,7 +11,11 @@ export default defineConfig(async () => ({
         compatibilityFlags: ["nodejs_compat"],
         d1Databases: ["DB"],
         r2Buckets: ["BUCKET"],
-        bindings: { TEST_MIGRATIONS: await readD1Migrations("./drizzle") },
+        bindings: {
+          TEST_MIGRATIONS: await readD1Migrations("./drizzle"),
+          EMAIL_MODE: "log",
+          RESEND_DAILY_LIMIT: "100",
+        },
       },
     }),
   ],

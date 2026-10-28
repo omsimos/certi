@@ -6,6 +6,7 @@ const PUBLIC_ERROR_NAMES = [
   "ForbiddenError",
   "EventCodeTakenError",
   "ValidationError",
+  "ScheduledEmailCancelError",
 ];
 
 // The router's default error plugin sends only `message`, so without this the browser

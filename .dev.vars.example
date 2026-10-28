@@ -14,3 +14,10 @@ GOOGLE_CLIENT_SECRET=
 # Leave empty to disable the provider locally.
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
+
+# Badge emails. `log` records them in memory and never calls Resend; `resend` sends for
+# real and needs RESEND_API_KEY and RESEND_FROM (a sender on a domain verified in Resend).
+EMAIL_MODE=log
+RESEND_API_KEY=
+# e.g. certi <badges@yourdomain.com>
+RESEND_FROM=

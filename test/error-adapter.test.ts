@@ -9,6 +9,9 @@ describe("errorNameAdapter", () => {
     expect(errorNameAdapter.test(Object.assign(new Error("x"), { name: "ValidationError" }))).toBe(
       true,
     );
+    expect(
+      errorNameAdapter.test(Object.assign(new Error("x"), { name: "ScheduledEmailCancelError" })),
+    ).toBe(true);
     expect(errorNameAdapter.test(new Error("x"))).toBe(false);
     expect(errorNameAdapter.test("ForbiddenError")).toBe(false);
   });

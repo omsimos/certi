@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 
 import type { DB } from "@/db";
 import { attendee, event, type Attendee, type Event } from "@/db/schema";
-import { NotFoundError } from "@/lib/errors";
+import { NotFoundError, ScheduledEmailCancelError } from "@/lib/errors";
 import type { AttendeeInput } from "@/lib/schemas";
 import { getOwnedEvent } from "@/server/events";
 
@@ -56,13 +56,30 @@ export async function deleteAttendee(
   ownerId: string,
   code: string,
   attendeeId: string,
+  opts: { cancel?: (resendId: string) => Promise<void> } = {},
 ): Promise<void> {
   const ev = await getOwnedEvent(db, ownerId, code);
   // Scoped to the owned event so a mismatched (code, id) pair can't touch another event.
-  const rows = await db
-    .delete(attendee)
-    .where(and(eq(attendee.id, attendeeId), eq(attendee.eventId, ev.id)))
-    .returning({ id: attendee.id });
+  const scope = and(eq(attendee.id, attendeeId), eq(attendee.eventId, ev.id));
+  const [row] = await db
+    .select({ emailStatus: attendee.emailStatus, resendId: attendee.resendId })
+    .from(attendee)
+    .where(scope)
+    .limit(1);
+  if (!row) throw new NotFoundError("Attendee not found");
+
+  // Otherwise the deleted attendee still gets an email whose link 404s.
+  if (row.emailStatus === "scheduled" && row.resendId && opts.cancel) {
+    try {
+      await opts.cancel(row.resendId);
+    } catch (err) {
+      throw new ScheduledEmailCancelError("Couldn't cancel the scheduled email. Try again.", {
+        cause: err,
+      });
+    }
+  }
+
+  const rows = await db.delete(attendee).where(scope).returning({ id: attendee.id });
   if (rows.length === 0) throw new NotFoundError("Attendee not found");
 }
 

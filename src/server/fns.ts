@@ -16,6 +16,9 @@ import {
 import { parseLogoUpload, removeEventLogo, saveEventLogo } from "@/server/assets";
 import { parseBadgeImageUpload, saveBadgeImage } from "@/server/badge-images";
 import { deleteAttendee, getBadge, importAttendees, listAttendees } from "@/server/attendees";
+import { createEmailClient } from "@/server/email/client";
+import { readEmailConfig } from "@/server/email/config";
+import { sendBadges } from "@/server/email/send-badges";
 import {
   createEvent,
   getEventByCode,
@@ -89,8 +92,39 @@ export const deleteAttendeeFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(z.object({ code: eventCodeSchema, attendeeId: z.string().min(1).max(64) }))
   .handler(({ data, context }) =>
-    deleteAttendee(getDb(env.DB), context.user.id, data.code, data.attendeeId),
+    deleteAttendee(getDb(env.DB), context.user.id, data.code, data.attendeeId, {
+      // Built lazily: only a scheduled email needs Resend, so deletes work without a key.
+      cancel: (resendId) => createEmailClient(readEmailConfig(env)).cancel(resendId),
+    }),
   );
+
+export const sendBadgesFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      code: eventCodeSchema,
+      attendeeIds: z
+        .array(z.string().regex(/^[A-Za-z0-9_-]{10}$/))
+        .max(2000)
+        .optional(),
+    }),
+  )
+  .handler(({ data, context }) => {
+    const cfg = readEmailConfig(env);
+    return sendBadges(
+      {
+        db: getDb(env.DB),
+        client: createEmailClient(cfg),
+        now: new Date(),
+        dailyLimit: cfg.dailyLimit,
+        origin: env.BETTER_AUTH_URL || getRequestUrl().origin,
+        from: cfg.from,
+      },
+      context.user.id,
+      data.code,
+      { attendeeIds: data.attendeeIds },
+    );
+  });
 
 // The public lookup validates loosely and re-checks inside the handler, so a
 // malformed code or id yields `null` ("not found") rather than a thrown error.

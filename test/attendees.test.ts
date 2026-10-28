@@ -1,7 +1,9 @@
 import { env } from "cloudflare:workers";
-import { describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
+import { describe, expect, it, vi } from "vitest";
 import { getDb } from "../src/db";
-import { ForbiddenError, NotFoundError } from "../src/lib/errors";
+import { attendee } from "../src/db/schema";
+import { ForbiddenError, NotFoundError, ScheduledEmailCancelError } from "../src/lib/errors";
 import type { AttendeeInput } from "../src/lib/schemas";
 import { deleteAttendee, getBadge, importAttendees, listAttendees } from "../src/server/attendees";
 import { createTestEvent, createTestUser } from "./helpers";
@@ -113,6 +115,45 @@ describe("attendees", () => {
     const [other] = await listAttendees(db, a.id, ev2.code);
     await expect(deleteAttendee(db, a.id, ev.code, other.id)).rejects.toBeInstanceOf(NotFoundError);
     expect(await listAttendees(db, a.id, ev2.code)).toHaveLength(2);
+  });
+
+  async function scheduledAttendee() {
+    const { a, ev } = await setup();
+    await importAttendees(db, a.id, ev.code, two);
+    const [first] = await listAttendees(db, a.id, ev.code);
+    await db
+      .update(attendee)
+      .set({ emailStatus: "scheduled", emailScheduledFor: new Date(), resendId: "re_123" })
+      .where(eq(attendee.id, first.id));
+    return { a, ev, id: first.id };
+  }
+
+  it("cancels a scheduled email before deleting the attendee", async () => {
+    const { a, ev, id } = await scheduledAttendee();
+    const cancel = vi.fn(async () => {});
+    await deleteAttendee(db, a.id, ev.code, id, { cancel });
+    expect(cancel).toHaveBeenCalledWith("re_123");
+    expect((await listAttendees(db, a.id, ev.code)).map((r) => r.id)).not.toContain(id);
+  });
+
+  it("keeps the attendee when the scheduled email can't be cancelled", async () => {
+    const { a, ev, id } = await scheduledAttendee();
+    const cancel = vi.fn(async () => {
+      throw new Error("Resend is down");
+    });
+    const err = await deleteAttendee(db, a.id, ev.code, id, { cancel }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ScheduledEmailCancelError);
+    expect((err as Error).message).toBe("Couldn't cancel the scheduled email. Try again.");
+    expect((await listAttendees(db, a.id, ev.code)).map((r) => r.id)).toContain(id);
+  });
+
+  it("does not cancel anything for an attendee without a scheduled email", async () => {
+    const { a, ev } = await setup();
+    await importAttendees(db, a.id, ev.code, two);
+    const [first] = await listAttendees(db, a.id, ev.code);
+    const cancel = vi.fn(async () => {});
+    await deleteAttendee(db, a.id, ev.code, first.id, { cancel });
+    expect(cancel).not.toHaveBeenCalled();
   });
 
   it("getBadge returns attendee and event", async () => {
