@@ -12,6 +12,9 @@ import { qrModules } from "../src/lib/badge/qr";
 import { BADGE_TEMPLATES } from "../src/lib/badge/templates";
 
 const measure = (t: string, px: number) => t.length * px * 0.55;
+// No lone surrogates.
+const wellFormed = (s: string) =>
+  !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(s);
 const opts = { maxWidth: 884, maxPx: 96, minPx: 56, maxLines: 2 as const };
 
 describe("fitText", () => {
@@ -41,6 +44,16 @@ describe("fitText", () => {
     expect(r.px).toBe(56);
     expect(r.lines[0].endsWith("…")).toBe(true);
     expect(measure(r.lines[0], r.px)).toBeLessThanOrEqual(884);
+  });
+
+  it("never leaves a lone surrogate when ellipsizing emoji", () => {
+    for (const n of [60, 61, 62, 63]) {
+      const r = fitText(measure, "a".repeat(n) + "🎉🎉🎉", {
+        ...opts,
+        maxLines: 1,
+      });
+      for (const l of r.lines) expect(wellFormed(l)).toBe(true);
+    }
   });
 
   it("respects maxLines 1", () => {
@@ -116,6 +129,14 @@ describe("drawLettering", () => {
     const all = texts.map((t) => t.text).join(" ");
     expect(all).toContain("Juan");
     expect(all).toContain("Dela Cruz");
+  });
+
+  it("keeps emoji intact in tracked labels", () => {
+    const { ctx, texts } = fakeCtx();
+    drawLettering(ctx, "graphite", { ...data, eventTitle: "DevFest 🎉" }, {});
+    const t = texts.find((x) => x.text.includes("🎉"));
+    expect(t).toBeDefined();
+    expect(wellFormed(t?.text ?? "")).toBe(true);
   });
 
   it("draws the logo only on the branded template", () => {

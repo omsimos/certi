@@ -37,9 +37,12 @@ type FitOptions = {
 };
 
 function ellipsize(measure: Measure, line: string, px: number, maxWidth: number) {
-  let s = line;
-  while (s.length > 0 && measure(`${s}…`, px) > maxWidth) s = s.slice(0, -1);
-  return `${s.trimEnd()}…`;
+  // Trim by code point so a surrogate pair is never cut in half.
+  const chars = Array.from(line);
+  while (chars.length > 0 && measure(`${chars.join("")}…`, px) > maxWidth) {
+    chars.pop();
+  }
+  return `${chars.join("").trimEnd()}…`;
 }
 
 function splitNearMiddle(text: string): string[] | null {
@@ -95,7 +98,7 @@ export function maskFromImageData(data: ImageData): Uint8Array {
 const W = LETTERING_SIZE[0];
 const HAIR = String.fromCharCode(8202);
 // Hair-space letterspacing for the mono labels.
-const track = (t: string) => t.toUpperCase().split("").join(HAIR);
+const track = (t: string) => Array.from(t.toUpperCase()).join(HAIR);
 
 function sourceSize(img: CanvasImageSource): [number, number] {
   const i = img as {
