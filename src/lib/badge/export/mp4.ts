@@ -41,5 +41,7 @@ export async function exportMp4(
     await output.cancel();
     throw e;
   }
+  // Finalizing can take a while; a cancel meanwhile must not produce a file.
+  signal?.throwIfAborted();
   return new Blob([output.target.buffer!], { type: "video/mp4" });
 }

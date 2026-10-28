@@ -75,6 +75,8 @@ export function ExportMenu({
     try {
       const exporter = await RUNNERS[format]();
       const blob = await exporter(h, { signal: controller.signal, onProgress: setProgress });
+      // A cancel during the last frame or the encode still resolves; don't download it.
+      controller.signal.throwIfAborted();
       download(blob, `badge-${attendeeId}.${format}`);
     } catch (e) {
       if (!controller.signal.aborted) {
