@@ -10,7 +10,7 @@ import {
   type SendResult,
   UNKNOWN_RESEND_ID,
 } from "@/server/email/client";
-import { DAY_MS, planSendSlots } from "@/server/email/slots";
+import { planSendSlots, SLOT_STEP_MS } from "@/server/email/slots";
 import { getOwnedEvent } from "@/server/events";
 
 // Workers Free allows 50 external subrequests per request; this leaves headroom.
@@ -147,7 +147,8 @@ async function loadCandidates(
 
 // The quota is per Resend account, so every event's sends and schedules count.
 async function loadCommitments(db: DB, now: Date): Promise<Date[]> {
-  const since = new Date(now.getTime() - DAY_MS);
+  // As far back as today's slot looks.
+  const since = new Date(now.getTime() - SLOT_STEP_MS);
   const rows = await db
     .select({
       status: attendee.emailStatus,

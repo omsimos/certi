@@ -16,7 +16,7 @@ import {
 import { readEmailConfig } from "../src/server/email/config";
 import { CLAIM_TIMEOUT_MS } from "../src/lib/email-status";
 import { claimStatements, sendBadges, type SendDeps } from "../src/server/email/send-badges";
-import { DAY_MS } from "../src/server/email/slots";
+import { DAY_MS, SLOT_STEP_MS } from "../src/server/email/slots";
 import { createTestEvent, createTestUser } from "./helpers";
 
 const db = getDb(env.DB);
@@ -102,7 +102,7 @@ describe("sendBadges", () => {
 
     const summary = await sendBadges(deps(now, { dailyLimit: 2 }), ownerId, ev.code);
 
-    const tomorrow = new Date(now.getTime() + DAY_MS);
+    const tomorrow = new Date(now.getTime() + SLOT_STEP_MS);
     expect(summary).toEqual({
       sentNow: 2,
       scheduled: [{ at: tomorrow.toISOString(), count: 1 }],
@@ -145,7 +145,7 @@ describe("sendBadges", () => {
 
     const summary = await sendBadges(deps(now, { dailyLimit: 2 }), mine.ownerId, mine.ev.code);
 
-    const tomorrow = new Date(now.getTime() + DAY_MS).toISOString();
+    const tomorrow = new Date(now.getTime() + SLOT_STEP_MS).toISOString();
     expect(summary.sentNow).toBe(0);
     expect(summary.scheduled).toEqual([{ at: tomorrow, count: 1 }]);
     expect(emailLog.batches[0][0].scheduledAt).toBe(tomorrow);
@@ -202,7 +202,7 @@ describe("sendBadges", () => {
       .where(inArray(attendee.id, other.ids.slice(0, 3)));
     await db
       .update(attendee)
-      .set({ emailStatus: "scheduled", emailScheduledFor: new Date(now.getTime() + DAY_MS) })
+      .set({ emailStatus: "scheduled", emailScheduledFor: new Date(now.getTime() + SLOT_STEP_MS) })
       .where(eq(attendee.id, other.ids[3]));
     const mine = await seed({ images: 3 });
 
@@ -210,7 +210,7 @@ describe("sendBadges", () => {
 
     expect(summary.sentNow).toBe(1);
     expect(summary.scheduled).toEqual([
-      { at: new Date(now.getTime() + DAY_MS).toISOString(), count: 2 },
+      { at: new Date(now.getTime() + SLOT_STEP_MS).toISOString(), count: 2 },
     ]);
   });
 
@@ -296,7 +296,7 @@ describe("sendBadges", () => {
 
     expect(emailLog.cancelled).toEqual([oldId]);
     // Today and tomorrow are still taken by the first send, so it moves a day further.
-    const inTwoDays = new Date(now.getTime() + 2 * DAY_MS);
+    const inTwoDays = new Date(now.getTime() + 2 * SLOT_STEP_MS);
     expect(summary.scheduled).toEqual([{ at: inTwoDays.toISOString(), count: 1 }]);
     const row = (await rowsOf(ev))[1];
     expect(row.emailStatus).toBe("scheduled");
