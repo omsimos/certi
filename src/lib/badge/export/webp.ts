@@ -8,16 +8,6 @@ const H = 1024;
 const FPS = 24;
 const SECONDS = 4;
 
-export const canExportWebp = async (): Promise<boolean> => {
-  try {
-    if (typeof OffscreenCanvas === "undefined") return false;
-    const blob = await new OffscreenCanvas(2, 2).convertToBlob({ type: "image/webp" });
-    return blob.type === "image/webp";
-  } catch {
-    return false;
-  }
-};
-
 export async function exportWebp(
   handle: BadgeHandle,
   { signal, onProgress }: ExportOptions = {},

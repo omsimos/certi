@@ -9,8 +9,6 @@ const H = 768;
 const FPS = 20;
 const SECONDS = 4;
 
-export const canExportGif = async (): Promise<boolean> => typeof OffscreenCanvas !== "undefined";
-
 export async function exportGif(
   handle: BadgeHandle,
   { signal, onProgress }: ExportOptions = {},

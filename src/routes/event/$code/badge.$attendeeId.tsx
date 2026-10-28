@@ -1,5 +1,5 @@
 import { ClientOnly, createFileRoute, notFound } from "@tanstack/react-router";
-import { lazy, Suspense, useRef } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 
 import type { HoloBadgeHandle } from "@/components/badge/holo-badge";
 
@@ -50,6 +50,7 @@ const placeholder = <div className="aspect-[300/430] w-full rounded-xl bg-[#090a
 function BadgePage() {
   const { event, card, logoUrl } = Route.useLoaderData();
   const badge = useRef<HoloBadgeHandle>(null);
+  const [backend, setBackend] = useState<HoloBadgeHandle["backend"] | null>(null);
   return (
     <main className="container flex min-h-screen flex-col items-center justify-center gap-6 py-24">
       <h1 className="sr-only">
@@ -64,13 +65,14 @@ function BadgePage() {
               data={card}
               logoUrl={logoUrl}
               ref={badge}
+              onBackendChange={setBackend}
             />
           </Suspense>
         </ClientOnly>
       </div>
       <ClientOnly>
         <Suspense>
-          <ExportMenu handle={badge} attendeeId={card.attendeeId} />
+          <ExportMenu handle={badge} attendeeId={card.attendeeId} backend={backend} />
         </Suspense>
       </ClientOnly>
     </main>

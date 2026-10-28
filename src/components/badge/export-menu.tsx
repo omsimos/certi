@@ -2,6 +2,7 @@ import { type RefObject, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { canExportGif, canExportMp4, canExportWebp } from "@/lib/badge/export/support";
 import type { ExportOptions } from "@/lib/badge/export/types";
 
 import type { HoloBadgeHandle } from "./holo-badge";
@@ -24,14 +25,6 @@ const RUNNERS: Record<Format, () => Promise<Run>> = {
   gif: async () => (await import("@/lib/badge/export/gif")).exportGif,
 };
 
-const CHECKS: Record<Exclude<Format, "png">, () => Promise<boolean>> = {
-  // Skip loading mediabunny at all where WebCodecs is missing.
-  mp4: async () =>
-    typeof VideoEncoder !== "undefined" && (await import("@/lib/badge/export/mp4")).canExportMp4(),
-  webp: async () => (await import("@/lib/badge/export/webp")).canExportWebp(),
-  gif: async () => (await import("@/lib/badge/export/gif")).canExportGif(),
-};
-
 function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -44,32 +37,31 @@ function download(blob: Blob, name: string) {
 export function ExportMenu({
   handle,
   attendeeId,
+  backend,
 }: {
   handle: RefObject<HoloBadgeHandle | null>;
   attendeeId: string;
+  backend: HoloBadgeHandle["backend"] | null;
 }) {
-  const [available, setAvailable] = useState<Format[]>(["png"]);
+  const [supported, setSupported] = useState<Format[]>([]);
   const [running, setRunning] = useState<Format | null>(null);
   const [progress, setProgress] = useState(0);
   const abort = useRef<AbortController | null>(null);
 
-  // The handle only exists once the badge has mounted, and its backend decides what's offered.
+  // Support doesn't depend on the backend; only whether the live badge is WebGPU does.
   useEffect(() => {
     let stale = false;
-    const timer = setInterval(async () => {
-      const h = handle.current;
-      if (!h) return;
-      clearInterval(timer);
-      if (h.backend === "flat") return;
-      const formats = ["mp4", "webp", "gif"] as const;
-      const ok = await Promise.all(formats.map((f) => CHECKS[f]().catch(() => false)));
-      if (!stale) setAvailable(["png", ...formats.filter((_, i) => ok[i])]);
-    }, 200);
+    const formats = ["mp4", "webp", "gif"] as const;
+    const checks = [canExportMp4, canExportWebp, canExportGif];
+    void Promise.all(checks.map((c) => c().catch(() => false))).then((ok) => {
+      if (!stale) setSupported(formats.filter((_, i) => ok[i]));
+    });
     return () => {
       stale = true;
-      clearInterval(timer);
     };
-  }, [handle]);
+  }, []);
+
+  const available: Format[] = backend === "webgpu" ? ["png", ...supported] : ["png"];
 
   useEffect(() => () => abort.current?.abort(), []);
 

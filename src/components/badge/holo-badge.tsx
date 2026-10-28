@@ -52,6 +52,8 @@ export type HoloBadgeProps = {
   interactive?: boolean;
   className?: string;
   ref?: Ref<HoloBadgeHandle>;
+  /** Fires on mount and whenever WebGPU is lost and the badge falls back to flat. */
+  onBackendChange?: (backend: HoloBadgeHandle["backend"]) => void;
 };
 
 type Backend = HoloBadgeHandle["backend"];
@@ -142,6 +144,7 @@ export function HoloBadge({
   interactive = true,
   className,
   ref,
+  onBackendChange,
 }: HoloBadgeProps) {
   const [backend, setBackend] = useState<Backend>(initialBackend);
   const [lettering, setLettering] = useState<Lettering | null>(null);
@@ -149,6 +152,7 @@ export function HoloBadge({
   const tiltRef = useRef<HTMLDivElement>(null);
   const sheenRef = useRef<HTMLDivElement>(null);
   const props = useRef({ template, accent, data, logoUrl, interactive });
+  const onBackend = useRef(onBackendChange);
   const letteringPromise = useRef<Promise<Lettering> | null>(null);
   const scene = useRef<HoloScene | null>(null);
   // Pointer and smoothed pose, mutated per frame without re-rendering.
@@ -167,6 +171,7 @@ export function HoloBadge({
 
   useEffect(() => {
     props.current = { template, accent, data, logoUrl, interactive };
+    onBackend.current = onBackendChange;
   });
 
   // Compared by value: callers often pass a fresh `data` object each render.
@@ -283,6 +288,8 @@ export function HoloBadge({
     observer.observe(canvas);
     return () => observer.disconnect();
   }, [backend, lettering, accent]);
+
+  useEffect(() => onBackend.current?.(backend), [backend]);
 
   useImperativeHandle(ref, () => {
     // What the viewer sees right now, so a still export matches the live card.

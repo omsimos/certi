@@ -1,4 +1,4 @@
-import { BufferTarget, CanvasSource, canEncodeVideo, Mp4OutputFormat, Output } from "mediabunny";
+import { BufferTarget, CanvasSource, Mp4OutputFormat, Output } from "mediabunny";
 
 import { frameTimes } from "@/lib/badge/pose";
 
@@ -8,14 +8,6 @@ const W = 1080;
 const H = 1536;
 const FPS = 30;
 const SECONDS = 4;
-
-export const canExportMp4 = async (): Promise<boolean> => {
-  try {
-    return await canEncodeVideo("avc", { width: W, height: H });
-  } catch {
-    return false;
-  }
-};
 
 export async function exportMp4(
   handle: BadgeHandle,
