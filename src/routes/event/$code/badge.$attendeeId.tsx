@@ -21,7 +21,7 @@ export const Route = createFileRoute("/event/$code/badge/$attendeeId")({
       getOriginFn(),
     ]);
     if (!badge) throw notFound();
-    const { attendee, event } = badge;
+    const { attendee, event, imageVersion } = badge;
     const card: BadgeCardData = {
       firstName: attendee.firstName,
       lastName: attendee.lastName,
@@ -33,13 +33,21 @@ export const Route = createFileRoute("/event/$code/badge/$attendeeId")({
     };
     // The version busts the logo cache whenever the event (and so its logo) changes.
     const logoUrl = event.logoKey ? `/api/logo/${event.code}?v=${event.updatedAt.getTime()}` : null;
-    return { attendee, event, card, logoUrl };
+    const imageUrl =
+      imageVersion === null
+        ? null
+        : `${origin}/api/badge/${event.code}/${attendee.id}?v=${imageVersion}`;
+    return { attendee, event, card, logoUrl, imageUrl };
   },
   head: ({ loaderData }) => {
     if (!loaderData) return {};
-    const { attendee, event } = loaderData;
+    const { attendee, event, imageUrl } = loaderData;
     return {
-      meta: [{ title: `${attendee.firstName} ${attendee.lastName} | ${event.title} | Certi` }],
+      meta: [
+        { title: `${attendee.firstName} ${attendee.lastName} | ${event.title} | Certi` },
+        // No placeholder image: a preview without og:image is better than a wrong one.
+        ...(imageUrl ? [{ property: "og:image", content: imageUrl }] : []),
+      ],
     };
   },
   component: BadgePage,

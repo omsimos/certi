@@ -14,6 +14,7 @@ import {
   MAX_ATTENDEES_PER_IMPORT,
 } from "@/lib/schemas";
 import { parseLogoUpload, removeEventLogo, saveEventLogo } from "@/server/assets";
+import { parseBadgeImageUpload, saveBadgeImage } from "@/server/badge-images";
 import { deleteAttendee, getBadge, importAttendees, listAttendees } from "@/server/attendees";
 import {
   createEvent,
@@ -108,7 +109,24 @@ export const getBadgeFn = createServerFn({ method: "GET" })
     return {
       attendee: { id: attendeeId, firstName, lastName },
       event: toPublicEvent(badge.event),
+      // Lets the page emit og:image only when an image exists, and bust link-preview caches.
+      imageVersion: badge.attendee.badgeImageVersion?.getTime() ?? null,
     };
+  });
+
+export const uploadBadgeImageFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(parseBadgeImageUpload)
+  .handler(async ({ data, context }) => {
+    await saveBadgeImage(
+      getDb(env.DB),
+      env.BUCKET,
+      context.user.id,
+      data.code,
+      data.attendeeId,
+      new Uint8Array(await data.file.arrayBuffer()),
+      data.version,
+    );
   });
 
 export const uploadLogoFn = createServerFn({ method: "POST" })

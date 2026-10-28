@@ -18,6 +18,7 @@ import { Route as DashboardNewRouteImport } from './routes/dashboard/new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiLogoCodeRouteImport } from './routes/api/logo/$code'
 import { Route as EventCodeIndexRouteImport } from './routes/event/$code/index'
+import { Route as ApiBadgeCodeAttendeeIdRouteImport } from './routes/api/badge/$code.$attendeeId'
 import { Route as EventCodeBadgeAttendeeIdRouteImport } from './routes/event/$code/badge.$attendeeId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -65,6 +66,11 @@ const EventCodeIndexRoute = EventCodeIndexRouteImport.update({
   path: '/event/$code/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBadgeCodeAttendeeIdRoute = ApiBadgeCodeAttendeeIdRouteImport.update({
+  id: '/api/badge/$code/$attendeeId',
+  path: '/api/badge/$code/$attendeeId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EventCodeBadgeAttendeeIdRoute =
   EventCodeBadgeAttendeeIdRouteImport.update({
     id: '/event/$code/badge/$attendeeId',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/logo/$code': typeof ApiLogoCodeRoute
   '/event/$code/': typeof EventCodeIndexRoute
+  '/api/badge/$code/$attendeeId': typeof ApiBadgeCodeAttendeeIdRoute
   '/event/$code/badge/$attendeeId': typeof EventCodeBadgeAttendeeIdRoute
 }
 export interface FileRoutesByTo {
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/logo/$code': typeof ApiLogoCodeRoute
   '/event/$code': typeof EventCodeIndexRoute
+  '/api/badge/$code/$attendeeId': typeof ApiBadgeCodeAttendeeIdRoute
   '/event/$code/badge/$attendeeId': typeof EventCodeBadgeAttendeeIdRoute
 }
 export interface FileRoutesById {
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/logo/$code': typeof ApiLogoCodeRoute
   '/event/$code/': typeof EventCodeIndexRoute
+  '/api/badge/$code/$attendeeId': typeof ApiBadgeCodeAttendeeIdRoute
   '/event/$code/badge/$attendeeId': typeof EventCodeBadgeAttendeeIdRoute
 }
 export interface FileRouteTypes {
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/logo/$code'
     | '/event/$code/'
+    | '/api/badge/$code/$attendeeId'
     | '/event/$code/badge/$attendeeId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/logo/$code'
     | '/event/$code'
+    | '/api/badge/$code/$attendeeId'
     | '/event/$code/badge/$attendeeId'
   id:
     | '__root__'
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/logo/$code'
     | '/event/$code/'
+    | '/api/badge/$code/$attendeeId'
     | '/event/$code/badge/$attendeeId'
   fileRoutesById: FileRoutesById
 }
@@ -153,6 +165,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiLogoCodeRoute: typeof ApiLogoCodeRoute
   EventCodeIndexRoute: typeof EventCodeIndexRoute
+  ApiBadgeCodeAttendeeIdRoute: typeof ApiBadgeCodeAttendeeIdRoute
   EventCodeBadgeAttendeeIdRoute: typeof EventCodeBadgeAttendeeIdRoute
 }
 
@@ -221,6 +234,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventCodeIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/badge/$code/$attendeeId': {
+      id: '/api/badge/$code/$attendeeId'
+      path: '/api/badge/$code/$attendeeId'
+      fullPath: '/api/badge/$code/$attendeeId'
+      preLoaderRoute: typeof ApiBadgeCodeAttendeeIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/event/$code/badge/$attendeeId': {
       id: '/event/$code/badge/$attendeeId'
       path: '/event/$code/badge/$attendeeId'
@@ -254,6 +274,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiLogoCodeRoute: ApiLogoCodeRoute,
   EventCodeIndexRoute: EventCodeIndexRoute,
+  ApiBadgeCodeAttendeeIdRoute: ApiBadgeCodeAttendeeIdRoute,
   EventCodeBadgeAttendeeIdRoute: EventCodeBadgeAttendeeIdRoute,
 }
 export const routeTree = rootRouteImport
