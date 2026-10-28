@@ -18,8 +18,7 @@ import {
   renderEmailImages,
 } from "@/lib/badge/render-email-images";
 import { probeWebGPU } from "@/lib/badge/webgpu-support";
-import { effectiveEmailStatus } from "@/lib/email-status";
-import { describeSendSummary } from "@/lib/email-summary";
+import { describeSendSummary, planSendWork } from "@/lib/email-summary";
 import { sendAllBadges } from "@/lib/send-badges-client";
 import type { SendSummary } from "@/server/email/send-badges";
 
@@ -37,9 +36,6 @@ export type SendRow = Pick<
 
 type Mode = "rendered" | "simple";
 type Phase = "choose" | "rendering" | "sending" | "done";
-
-export const imageIsCurrent = (a: Pick<SendRow, "badgeImageVersion">, updatedAt: Date) =>
-  a.badgeImageVersion?.getTime() === updatedAt.getTime();
 
 export function SendBadgesDialog({
   open,
@@ -65,6 +61,7 @@ export function SendBadgesDialog({
   const [progress, setProgress] = useState<[number, number]>([0, 0]);
   const [summary, setSummary] = useState<SendSummary | null>(null);
   const [renderFailures, setRenderFailures] = useState(0);
+  const [refreshed, setRefreshed] = useState(0);
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -80,11 +77,9 @@ export function SendBadgesDialog({
     };
   }, [open]);
 
-  const toSend = attendees.filter((a) => {
-    const s = effectiveEmailStatus(a, now);
-    return s === "not_sent" || s === "failed";
-  });
-  const toRender = toSend.filter((a) => !imageIsCurrent(a, event.updatedAt));
+  const { toSend, staleScheduled, toRender } = planSendWork(attendees, event.updatedAt, now);
+  // Only scheduled emails with outdated images: re-upload them, there is nothing to send.
+  const refreshOnly = toSend.length === 0 && staleScheduled.length > 0;
   const seconds = Math.max(1, Math.round(0.3 * toRender.length));
 
   async function start() {
@@ -116,9 +111,13 @@ export function SendBadgesDialog({
           return;
         }
         setRenderFailures(result.failed.length);
+        const failedIds = new Set(result.failed.map((f) => f.id));
+        setRefreshed(staleScheduled.filter((a) => !failedIds.has(a.id)).length);
       }
-      setPhase("sending");
-      setSummary(await sendAllBadges(event.code));
+      if (toSend.length > 0) {
+        setPhase("sending");
+        setSummary(await sendAllBadges(event.code));
+      }
       setPhase("done");
     } catch (err) {
       console.error(err);
@@ -127,6 +126,8 @@ export function SendBadgesDialog({
     }
     await router.invalidate();
   }
+
+  const summaryLines = summary ? describeSendSummary(summary) : [];
 
   function handleOpenChange(next: boolean) {
     if (!next && phase === "sending") return;
@@ -138,10 +139,13 @@ export function SendBadgesDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Send badges</DialogTitle>
+          <DialogTitle>{refreshOnly ? "Refresh badge images" : "Send badges"}</DialogTitle>
           {phase === "choose" && (
             <DialogDescription>
-              Emails {toSend.length} {toSend.length === 1 ? "person" : "people"} their badge.
+              {toSend.length > 0 &&
+                `Emails ${toSend.length} ${toSend.length === 1 ? "person" : "people"} their badge. `}
+              {staleScheduled.length > 0 &&
+                `Updates the image in ${staleScheduled.length} scheduled ${staleScheduled.length === 1 ? "email" : "emails"} to match the event's latest details.`}
             </DialogDescription>
           )}
         </DialogHeader>
@@ -196,15 +200,20 @@ export function SendBadgesDialog({
           </p>
         )}
 
-        {phase === "done" && summary && (
+        {phase === "done" && (
           <div role="status" className="flex flex-col gap-1 text-sm">
-            {describeSendSummary(summary).map((line) => (
+            {summaryLines.map((line) => (
               <p key={line}>{line}</p>
             ))}
+            {refreshed > 0 && (
+              <p>
+                Updated the image in {refreshed} scheduled {refreshed === 1 ? "email" : "emails"}
+              </p>
+            )}
             {renderFailures > 0 && (
               <p className="text-destructive">{renderFailures} images couldn&apos;t be rendered</p>
             )}
-            {describeSendSummary(summary).length === 0 && <p>Nothing to send.</p>}
+            {summary && summaryLines.length === 0 && <p>Nothing to send.</p>}
           </div>
         )}
 
@@ -214,8 +223,11 @@ export function SendBadgesDialog({
               <Button variant="outline" onClick={() => handleOpenChange(false)}>
                 Close
               </Button>
-              <Button onClick={start} disabled={gpu === null || toSend.length === 0}>
-                Send badges
+              <Button
+                onClick={start}
+                disabled={gpu === null || (toSend.length === 0 && staleScheduled.length === 0)}
+              >
+                {refreshOnly ? "Refresh images" : "Send badges"}
               </Button>
             </>
           )}

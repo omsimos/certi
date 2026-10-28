@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { imageIsCurrent, type SendRow } from "@/components/send-badges-dialog";
+import type { SendRow } from "@/components/send-badges-dialog";
 import {
   Table,
   TableBody,
@@ -30,7 +30,7 @@ import type { EmailEvent } from "@/lib/badge/render-email-images";
 import { probeWebGPU } from "@/lib/badge/webgpu-support";
 import { hasErrorName } from "@/lib/errors";
 import { effectiveEmailStatus } from "@/lib/email-status";
-import { describeSendSummary, formatShortDate } from "@/lib/email-summary";
+import { describeSendSummary, formatShortDate, imageIsCurrent } from "@/lib/email-summary";
 import { sendAllBadges } from "@/lib/send-badges-client";
 import { deleteAttendeeFn } from "@/server/fns";
 

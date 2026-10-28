@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mergeSummaries, summarizeEmails } from "../src/lib/email-summary";
+import { mergeSummaries, planSendWork, summarizeEmails } from "../src/lib/email-summary";
 
 const now = new Date(2026, 9, 28, 9, 0);
 const updatedAt = new Date(2026, 9, 20);
@@ -83,6 +83,41 @@ describe("summarizeEmails", () => {
       now,
     );
     expect(s.needsImage).toBe(2);
+  });
+});
+
+describe("staleScheduled", () => {
+  const future = new Date(2026, 9, 30);
+  const scheduled = (o: Partial<Row>) =>
+    row({ emailStatus: "scheduled", emailScheduledFor: future, resendId: "a", ...o });
+  const rows = [
+    scheduled({ badgeImageVersion: new Date(1) }),
+    scheduled({ badgeImageVersion: v }),
+    row({ emailStatus: "sent", badgeImageVersion: new Date(1) }),
+    // Past-dated: already went out, so its image can't change anything.
+    scheduled({ emailScheduledFor: new Date(2026, 9, 27), badgeImageVersion: new Date(1) }),
+  ];
+
+  it("summarizeEmails counts scheduled emails with an outdated image", () => {
+    const s = summarizeEmails(rows, updatedAt, now);
+    expect(s).toMatchObject({ staleScheduled: 1, notSent: 0, failed: 0, needsImage: 0 });
+  });
+
+  it("planSendWork re-renders them without sending to them", () => {
+    const toSend = row({});
+    const work = planSendWork([...rows, toSend], updatedAt, now);
+    expect(work.toSend).toEqual([toSend]);
+    expect(work.staleScheduled).toEqual([rows[0]]);
+    expect(work.toRender).toEqual([toSend, rows[0]]);
+  });
+
+  it("planSendWork skips current images of rows to send", () => {
+    const current = row({ badgeImageVersion: v });
+    expect(planSendWork([current], updatedAt, now)).toEqual({
+      toSend: [current],
+      staleScheduled: [],
+      toRender: [],
+    });
   });
 });
 

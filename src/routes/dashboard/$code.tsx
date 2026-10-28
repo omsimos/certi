@@ -69,7 +69,9 @@ function ManageEvent() {
     () => summarizeEmails(attendees, event.updatedAt, now),
     [attendees, event.updatedAt, now],
   );
-  const nothingToSend = summary.notSent + summary.failed === 0;
+  const toEmail = summary.notSent + summary.failed;
+  // Outdated images on scheduled emails are fixed by re-uploading them, without sending.
+  const nothingToDo = toEmail === 0 && summary.staleScheduled === 0;
   const logoUrl = event.logoKey ? `/api/logo/${event.code}?v=${event.updatedAt.getTime()}` : null;
   const { tab } = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -104,7 +106,7 @@ function ManageEvent() {
             {attendees.length > 0 && (
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-muted-foreground">{describeEmailSummary(summary)}</p>
-                {nothingToSend ? (
+                {nothingToDo ? (
                   <Tooltip>
                     <TooltipTrigger render={<span tabIndex={0} />}>
                       <Button disabled>Send badges</Button>
@@ -112,7 +114,9 @@ function ManageEvent() {
                     <TooltipContent>Everyone has been emailed</TooltipContent>
                   </Tooltip>
                 ) : (
-                  <Button onClick={() => setSendOpen(true)}>Send badges</Button>
+                  <Button onClick={() => setSendOpen(true)}>
+                    {toEmail === 0 ? "Refresh images" : "Send badges"}
+                  </Button>
                 )}
               </div>
             )}

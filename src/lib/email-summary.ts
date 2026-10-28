@@ -13,7 +13,26 @@ export type EmailSummary = {
   sent: number;
   scheduled: { date: string; count: number }[];
   needsImage: number;
+  // Scheduled emails whose image predates the last event edit. The image route serves the
+  // latest upload, so re-uploading fixes them without resending.
+  staleScheduled: number;
 };
+
+export const imageIsCurrent = (a: Pick<EmailRow, "badgeImageVersion">, updatedAt: Date) =>
+  a.badgeImageVersion?.getTime() === updatedAt.getTime();
+
+// What Send badges works on: rows to email, and the images to render first.
+export function planSendWork<T extends EmailRow>(attendees: T[], updatedAt: Date, now: Date) {
+  const toSend: T[] = [];
+  const staleScheduled: T[] = [];
+  for (const a of attendees) {
+    const status = effectiveEmailStatus(a, now);
+    if (status === "not_sent" || status === "failed") toSend.push(a);
+    else if (status === "scheduled" && !imageIsCurrent(a, updatedAt)) staleScheduled.push(a);
+  }
+  const toRender = [...toSend.filter((a) => !imageIsCurrent(a, updatedAt)), ...staleScheduled];
+  return { toSend, staleScheduled, toRender };
+}
 
 export const localDateKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -24,7 +43,14 @@ export function summarizeEmails(
   eventUpdatedAt: Date,
   now: Date,
 ): EmailSummary {
-  const out: EmailSummary = { notSent: 0, failed: 0, sent: 0, scheduled: [], needsImage: 0 };
+  const out: EmailSummary = {
+    notSent: 0,
+    failed: 0,
+    sent: 0,
+    scheduled: [],
+    needsImage: 0,
+    staleScheduled: 0,
+  };
   const slots = new Map<string, number>();
   for (const a of attendees) {
     const status = effectiveEmailStatus(a, now);
@@ -32,10 +58,11 @@ export function summarizeEmails(
     else if (status === "scheduled") {
       const key = localDateKey(a.emailScheduledFor ?? now);
       slots.set(key, (slots.get(key) ?? 0) + 1);
+      if (!imageIsCurrent(a, eventUpdatedAt)) out.staleScheduled++;
     } else {
       if (status === "failed") out.failed++;
       else out.notSent++;
-      if (a.badgeImageVersion?.getTime() !== eventUpdatedAt.getTime()) out.needsImage++;
+      if (!imageIsCurrent(a, eventUpdatedAt)) out.needsImage++;
     }
   }
   out.scheduled = [...slots]
@@ -97,6 +124,7 @@ export function describeEmailSummary(s: EmailSummary): string {
   }
   parts.push(`${s.notSent} not sent`);
   if (s.failed > 0) parts.push(`${s.failed} failed`);
+  if (s.staleScheduled > 0) parts.push(`${s.staleScheduled} scheduled with an outdated image`);
   return parts.join(" · ");
 }
 
