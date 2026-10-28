@@ -4,6 +4,7 @@ import type { DB } from "@/db";
 import { event, type Event } from "@/db/schema";
 import { MAX_LOGO_BYTES } from "@/lib/badge/logo-limits";
 import { ValidationError } from "@/lib/errors";
+import { eventCodeSchema } from "@/lib/schemas";
 import { getOwnedEvent, nextUpdatedAt } from "@/server/events";
 
 // Shared with the client rasterizer, which must not import this db-bound module.
@@ -15,6 +16,16 @@ const startsWith = (bytes: Uint8Array, sig: number[]) =>
 export const isPng = (bytes: Uint8Array) =>
   startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 export const isJpeg = (bytes: Uint8Array) => startsWith(bytes, [0xff, 0xd8, 0xff]);
+
+// Size is checked here so an oversized upload is rejected before it is buffered.
+export function parseLogoUpload(d: unknown): { code: string; file: File } {
+  if (!(d instanceof FormData)) throw new ValidationError("Invalid upload");
+  const code = eventCodeSchema.safeParse(d.get("code"));
+  const file = d.get("file");
+  if (!code.success || !(file instanceof File)) throw new ValidationError("Invalid upload");
+  if (file.size > MAX_LOGO_BYTES) throw new ValidationError("Logo must be 512 KB or smaller");
+  return { code: code.data, file };
+}
 
 async function setLogoKey(
   db: DB,

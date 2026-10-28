@@ -6,6 +6,7 @@ import {
   isJpeg,
   isPng,
   MAX_LOGO_BYTES,
+  parseLogoUpload,
   removeEventLogo,
   saveEventLogo,
 } from "../src/server/assets";
@@ -96,5 +97,32 @@ describe("removeEventLogo", () => {
     const b = await createTestUser(db);
     const e = await createTestEvent(db, a.id);
     await expect(removeEventLogo(db, bucket, b.id, e.code)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+});
+
+describe("parseLogoUpload", () => {
+  const form = (code: unknown, file: unknown) => {
+    const f = new FormData();
+    if (code !== undefined) f.set("code", code as string);
+    if (file !== undefined) f.set("file", file as string | Blob);
+    return f;
+  };
+  const file = (size = 10) => new File([new Uint8Array(size)], "logo.png", { type: "image/png" });
+
+  it.each([
+    ["not FormData", { code: "abc-123", file: file() }],
+    ["missing code", form(undefined, file())],
+    ["malformed code", form("A B!", file())],
+    ["missing file", form("abc-123", undefined)],
+    ["non-File file", form("abc-123", "text")],
+    ["oversized file", form("abc-123", file(MAX_LOGO_BYTES + 1))],
+  ])("rejects %s", (_n, input) => {
+    expect(() => parseLogoUpload(input)).toThrow(ValidationError);
+  });
+
+  it("accepts a valid upload", () => {
+    const out = parseLogoUpload(form("abc-123", file(MAX_LOGO_BYTES)));
+    expect(out.code).toBe("abc-123");
+    expect(out.file.size).toBe(MAX_LOGO_BYTES);
   });
 });

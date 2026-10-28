@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { getDb } from "@/db";
 import { auth } from "@/lib/auth";
-import { assertUser, ValidationError } from "@/lib/errors";
+import { assertUser } from "@/lib/errors";
 import {
   attendeeInputSchema,
   eventCodeSchema,
@@ -13,7 +13,7 @@ import {
   eventUpdateSchema,
   MAX_ATTENDEES_PER_IMPORT,
 } from "@/lib/schemas";
-import { removeEventLogo, saveEventLogo } from "@/server/assets";
+import { parseLogoUpload, removeEventLogo, saveEventLogo } from "@/server/assets";
 import { deleteAttendee, getBadge, importAttendees, listAttendees } from "@/server/attendees";
 import {
   createEvent,
@@ -113,13 +113,7 @@ export const getBadgeFn = createServerFn({ method: "GET" })
 
 export const uploadLogoFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((d: unknown) => {
-    if (!(d instanceof FormData)) throw new ValidationError("Invalid upload");
-    const code = eventCodeSchema.safeParse(d.get("code"));
-    const file = d.get("file");
-    if (!code.success || !(file instanceof File)) throw new ValidationError("Invalid upload");
-    return { code: code.data, file };
-  })
+  .validator(parseLogoUpload)
   .handler(async ({ data, context }) =>
     saveEventLogo(
       getDb(env.DB),
