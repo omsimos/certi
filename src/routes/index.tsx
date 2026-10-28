@@ -1,9 +1,40 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { ClientOnly, createFileRoute } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
 
 import { FindEventDialog } from "@/components/find-event-dialog";
 import RetroGrid from "@/components/magicui/retro-grid";
+import type { BadgeCardData } from "@/lib/badge/layout";
+import { DEFAULT_ACCENT } from "@/lib/badge/templates";
+
+const HoloBadge = lazy(() =>
+  import("@/components/badge/holo-badge").then((m) => ({ default: m.HoloBadge })),
+);
 
 export const Route = createFileRoute("/")({ component: Home });
+
+const demoCard: Omit<BadgeCardData, "badgeUrl"> = {
+  firstName: "Juan",
+  lastName: "Dela Cruz",
+  eventTitle: "DevFest Manila",
+  organizer: "Google Developer Groups",
+  date: "October 25, 2026",
+  attendeeId: "demo000000",
+};
+
+const placeholder = <div className="aspect-[300/430] w-full rounded-xl bg-[#090a0c]" />;
+
+// Client-only, so the QR can point at whichever origin is serving the page.
+function DemoBadge() {
+  return (
+    <Suspense fallback={placeholder}>
+      <HoloBadge
+        template="graphite"
+        accent={DEFAULT_ACCENT}
+        data={{ ...demoCard, badgeUrl: window.location.origin }}
+      />
+    </Suspense>
+  );
+}
 
 function Home() {
   return (
@@ -21,7 +52,11 @@ function Home() {
       </p>
 
       <FindEventDialog />
-      {/* Task 4: mount the demo badge here. */}
+      <div className="w-full max-w-xs pb-16">
+        <ClientOnly fallback={placeholder}>
+          <DemoBadge />
+        </ClientOnly>
+      </div>
       <RetroGrid className="absolute -bottom-64 -z-10 [mask-image:radial-gradient(ellipse_at_bottom,white,transparent_80%)]" />
     </main>
   );
