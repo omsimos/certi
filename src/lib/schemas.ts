@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { BADGE_TEMPLATES, DEFAULT_ACCENT, accentColorSchema } from "@/lib/badge/templates";
+
 export const eventCodeSchema = z
   .string()
   .regex(/^[a-z0-9-]{3,32}$/, "Use 3-32 lowercase letters, numbers or dashes");
@@ -35,6 +37,8 @@ export const eventInputSchema = z.object({
     .min(2, "Organizer must be at least 2 characters")
     .max(40, "Organizer must be at most 40 characters"),
   date: dateSchema,
+  template: z.enum(BADGE_TEMPLATES).default("graphite"),
+  accentColor: accentColorSchema.default(DEFAULT_ACCENT),
 });
 
 export const eventUpdateSchema = eventInputSchema.omit({ code: true });

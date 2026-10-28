@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import type { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
@@ -9,19 +10,26 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Event } from "@/db/schema";
 import { hasErrorName } from "@/lib/errors";
+import { DEFAULT_ACCENT } from "@/lib/badge/templates";
 import { eventInputSchema, type EventInput } from "@/lib/schemas";
 import { createEventFn, updateEventFn } from "@/server/fns";
 
 type EventFormProps =
   | { mode: "create"; event?: undefined }
-  | { mode: "edit"; event: Pick<Event, "code" | "title" | "description" | "organizer" | "date"> };
+  | {
+      mode: "edit";
+      event: Pick<
+        Event,
+        "code" | "title" | "description" | "organizer" | "date" | "template" | "accentColor"
+      >;
+    };
 
 export function EventForm({ mode, event }: EventFormProps) {
   const navigate = useNavigate();
   const router = useRouter();
   const isEdit = mode === "edit";
 
-  const form = useForm<EventInput>({
+  const form = useForm<z.input<typeof eventInputSchema>, unknown, EventInput>({
     resolver: zodResolver(eventInputSchema),
     defaultValues: {
       code: event?.code ?? "",
@@ -30,6 +38,8 @@ export function EventForm({ mode, event }: EventFormProps) {
       organizer: event?.organizer ?? "",
       // Left empty in create mode: "today" differs between server and browser time zones.
       date: event?.date ?? "",
+      template: event?.template ?? "graphite",
+      accentColor: event?.accentColor ?? DEFAULT_ACCENT,
     },
   });
   const { errors, isSubmitting } = form.formState;

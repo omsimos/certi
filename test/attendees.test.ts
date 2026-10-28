@@ -48,7 +48,7 @@ describe("attendees", () => {
     expect(await listAttendees(db, a.id, ev.code)).toHaveLength(500);
   });
 
-  it.each([15, 16, 30, 31])("imports %i rows across statement boundaries", async (n) => {
+  it.each([14, 15, 28, 29])("imports %i rows across statement boundaries", async (n) => {
     const { a, ev } = await setup();
     const rows = Array.from({ length: n }, (_, i) => ({
       firstName: "F",

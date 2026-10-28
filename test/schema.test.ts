@@ -16,6 +16,18 @@ describe("schema", () => {
     await expect(db.insert(attendee).values({ id: nanoid(10), ...row })).rejects.toThrow();
   });
 
+  it("new attendee defaults to not_sent", async () => {
+    const db = getDb(env.DB);
+    const user = await createTestUser(db);
+    const ev = await createTestEvent(db, user.id);
+    const [row] = await db
+      .insert(attendee)
+      .values({ id: nanoid(10), eventId: ev.id, firstName: "A", lastName: "B", email: "n@b.co" })
+      .returning();
+    expect(row.emailStatus).toBe("not_sent");
+    expect(row.badgeImageKey).toBeNull();
+  });
+
   it("allows the same email in different events", async () => {
     const db = getDb(env.DB);
     const user = await createTestUser(db);

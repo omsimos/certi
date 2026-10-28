@@ -34,6 +34,8 @@ export async function createEvent(db: DB, ownerId: string, input: EventInput): P
         description: input.description,
         organizer: input.organizer,
         date: input.date,
+        template: input.template,
+        accentColor: input.accentColor,
       })
       .returning();
     return row;
@@ -72,6 +74,8 @@ export async function updateEvent(
       description: input.description,
       organizer: input.organizer,
       date: input.date,
+      template: input.template,
+      accentColor: input.accentColor,
       updatedAt,
     })
     .where(and(eq(event.id, prev.id), eq(event.ownerId, ownerId)))

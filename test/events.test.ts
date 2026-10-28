@@ -29,6 +29,8 @@ function makeInput(overrides: Partial<EventInput> = {}): EventInput {
     description: "A community event with talks and workshops for developers.",
     organizer: "GDG Cloud",
     date: "2026-11-01",
+    template: "graphite",
+    accentColor: "#6d3cff",
     ...overrides,
   };
 }
@@ -38,6 +40,8 @@ const update = {
   description: "A different description that is long enough to be valid.",
   organizer: "GDG Cloud",
   date: "2026-11-02",
+  template: "graphite" as const,
+  accentColor: "#6d3cff",
 };
 
 describe("events", () => {
@@ -77,6 +81,19 @@ describe("events", () => {
     expect(updated.updatedAt.getTime()).toBeGreaterThan(ev.updatedAt.getTime());
     const again = await updateEvent(db, a.id, ev.code, update);
     expect(again.updatedAt.getTime()).toBeGreaterThan(updated.updatedAt.getTime());
+  });
+
+  it("updateEvent saves template and accent and bumps updatedAt", async () => {
+    const a = await createTestUser(db);
+    const prev = await createEvent(db, a.id, makeInput());
+    const updated = await updateEvent(db, a.id, prev.code, {
+      ...update,
+      template: "id",
+      accentColor: "#112233",
+    });
+    expect(updated.template).toBe("id");
+    expect(updated.accentColor).toBe("#112233");
+    expect(updated.updatedAt.getTime()).toBeGreaterThan(prev.updatedAt.getTime());
   });
 
   it("forbids non-owners from updating", async () => {
@@ -128,7 +145,14 @@ describe("events", () => {
 
   it("update schema strips code, ownerId and id", () => {
     const parsed = eventUpdateSchema.parse({ ...update, code: "x-y-z", ownerId: "u", id: "e" });
-    expect(Object.keys(parsed).sort()).toEqual(["date", "description", "organizer", "title"]);
+    expect(Object.keys(parsed).sort()).toEqual([
+      "accentColor",
+      "date",
+      "description",
+      "organizer",
+      "template",
+      "title",
+    ]);
   });
 
   it("enforces length boundaries", () => {

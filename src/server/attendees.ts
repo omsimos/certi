@@ -9,8 +9,9 @@ import { getOwnedEvent } from "@/server/events";
 
 export { parseAttendeeRows } from "@/lib/attendee-rows";
 
-// 6 columns x 15 rows = 90 bound parameters, under D1's limit of 100 per statement.
-const ROWS_PER_INSERT = 15;
+// 7 bound columns (emailStatus' default is bound too) x 14 rows = 98 parameters,
+// under D1's limit of 100 per statement.
+const ROWS_PER_INSERT = 14;
 
 export async function importAttendees(
   db: DB,

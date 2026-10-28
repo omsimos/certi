@@ -1,7 +1,10 @@
 import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { BADGE_TEMPLATES, DEFAULT_ACCENT } from "@/lib/badge/templates";
 import { user } from "./auth-schema";
 
 export * from "./auth-schema";
+
+const EMAIL_STATUSES = ["not_sent", "scheduled", "sent", "failed"] as const;
 
 export const event = sqliteTable("event", {
   id: text("id").primaryKey(),
@@ -10,6 +13,9 @@ export const event = sqliteTable("event", {
   description: text("description").notNull(),
   organizer: text("organizer").notNull(),
   date: text("date").notNull(),
+  template: text("template", { enum: BADGE_TEMPLATES }).notNull().default("graphite"),
+  accentColor: text("accent_color").notNull().default(DEFAULT_ACCENT),
+  logoKey: text("logo_key"),
   ownerId: text("owner_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
@@ -35,8 +41,16 @@ export const attendee = sqliteTable(
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .$defaultFn(() => new Date())
       .notNull(),
+    emailStatus: text("email_status", { enum: EMAIL_STATUSES }).notNull().default("not_sent"),
+    emailScheduledFor: integer("email_scheduled_for", { mode: "timestamp_ms" }),
+    emailSentAt: integer("email_sent_at", { mode: "timestamp_ms" }),
+    emailError: text("email_error"),
+    resendId: text("resend_id"),
+    badgeImageKey: text("badge_image_key"),
+    badgeImageVersion: integer("badge_image_version", { mode: "timestamp_ms" }),
   },
   (t) => [
+    index("attendee_email_status").on(t.emailStatus),
     uniqueIndex("attendee_event_email").on(t.eventId, t.email),
     index("attendee_event").on(t.eventId),
   ],
@@ -44,3 +58,4 @@ export const attendee = sqliteTable(
 
 export type Event = typeof event.$inferSelect;
 export type Attendee = typeof attendee.$inferSelect;
+export type EmailStatus = (typeof EMAIL_STATUSES)[number];
