@@ -1,12 +1,13 @@
 import { useRouter } from "@tanstack/react-router";
 import { ClientOnly } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import type { BadgeCardData } from "@/lib/badge/layout";
 import { LogoTooLargeError, rasterizeLogo } from "@/lib/badge/rasterize-logo";
 import { BADGE_TEMPLATES, type BadgeTemplate } from "@/lib/badge/templates";
+import { commitOnChange } from "@/lib/commit-on-change";
 import { formatEventDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { removeLogoFn, uploadLogoFn } from "@/server/fns";
@@ -45,7 +46,7 @@ export function TemplatePicker({
   logo,
 }: Props) {
   const router = useRouter();
-  const colorRef = useRef<HTMLInputElement>(null);
+  const colorRef = useRef<HTMLInputElement | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -54,12 +55,13 @@ export function TemplatePicker({
   useEffect(() => {
     onAccentRef.current = onAccentChange;
   });
-  useEffect(() => {
-    const el = colorRef.current;
-    if (!el) return;
-    const commit = () => onAccentRef.current(el.value);
-    el.addEventListener("change", commit);
-    return () => el.removeEventListener("change", commit);
+  const colorInputRef = useCallback((el: HTMLInputElement | null) => {
+    colorRef.current = el;
+    const detach = commitOnChange<HTMLInputElement>((v) => onAccentRef.current(v))(el);
+    return () => {
+      colorRef.current = null;
+      detach?.();
+    };
   }, []);
   useEffect(() => {
     if (colorRef.current) colorRef.current.value = accent;
@@ -152,7 +154,7 @@ export function TemplatePicker({
           <label className="flex items-center gap-3 text-sm font-medium">
             Accent color
             <input
-              ref={colorRef}
+              ref={colorInputRef}
               type="color"
               defaultValue={accent}
               className="h-8 w-12 cursor-pointer rounded border bg-transparent"
