@@ -3,8 +3,7 @@ import { lazy, Suspense, useRef, useState } from "react";
 
 import type { HoloBadgeHandle } from "@/components/badge/holo-badge";
 
-import type { BadgeCardData } from "@/lib/badge/layout";
-import { formatEventDate } from "@/lib/format";
+import { badgeCardData } from "@/lib/badge/card-data";
 import { getBadgeFn, getOriginFn } from "@/server/fns";
 
 const ExportMenu = lazy(() =>
@@ -22,15 +21,7 @@ export const Route = createFileRoute("/event/$code/badge/$attendeeId")({
     ]);
     if (!badge) throw notFound();
     const { attendee, event, imageVersion } = badge;
-    const card: BadgeCardData = {
-      firstName: attendee.firstName,
-      lastName: attendee.lastName,
-      eventTitle: event.title,
-      organizer: event.organizer,
-      date: formatEventDate(event.date),
-      attendeeId: attendee.id,
-      badgeUrl: `${origin}/event/${event.code}/badge/${attendee.id}`,
-    };
+    const card = badgeCardData(event, attendee, origin);
     // The version busts the logo cache whenever the event (and so its logo) changes.
     const logoUrl = event.logoKey ? `/api/logo/${event.code}?v=${event.updatedAt.getTime()}` : null;
     const imageUrl =

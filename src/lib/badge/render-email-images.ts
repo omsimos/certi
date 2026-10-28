@@ -1,6 +1,6 @@
 import type { Attendee } from "@/db/schema";
 import { exportPainter } from "@/lib/badge/export-painter";
-import type { BadgeCardData } from "@/lib/badge/layout";
+import { badgeCardData } from "@/lib/badge/card-data";
 import { buildLettering } from "@/lib/badge/lettering";
 import { STILL_POSE } from "@/lib/badge/pose";
 import type { BadgeTemplate } from "@/lib/badge/templates";
@@ -42,15 +42,7 @@ export async function renderEmailImages(
   let done = 0;
   if (attendees.length === 0) return { uploaded, failed };
 
-  const cardFor = (a: (typeof attendees)[number]): BadgeCardData => ({
-    firstName: a.firstName,
-    lastName: a.lastName,
-    eventTitle: event.title,
-    organizer: event.organizer,
-    date: event.date,
-    attendeeId: a.id,
-    badgeUrl: `${o.origin}/event/${event.code}/badge/${a.id}`,
-  });
+  const cardFor = (a: (typeof attendees)[number]) => badgeCardData(event, a, o.origin);
 
   const first = await buildLettering(event.template, cardFor(attendees[0]), o.logoUrl);
   const painter = await exportPainter(
