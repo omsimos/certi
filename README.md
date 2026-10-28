@@ -124,12 +124,14 @@ The Worker deliberately refuses to start without `BETTER_AUTH_SECRET` and `BETTE
 ### Free-tier limits
 
 - 100 emails per day and 3,000 per month. The daily cap is shared by every event on the deployment.
-- `scheduled_at` can be at most 30 days ahead. Slots run from day 0 to day 29.
+- `scheduled_at` can be at most 30 days ahead. Slots are a day and 15 minutes apart (so a rolling 24-hour cap has reset), and the last one falls before day 30.
 - Each Send badges call handles at most 100 emails (`MAX_EMAILS_PER_REQUEST`); the dashboard repeats calls until done. A claim left by an interrupted call can be retaken after 10 minutes.
 
 ### Cap probe
 
-Resend does not say whether a scheduled email counts against the daily cap when it is scheduled or when it is sent. `scripts/resend-cap-probe.ts` finds out. It schedules `RESEND_DAILY_LIMIT + 1` emails to `delivered@resend.dev` for tomorrow, then cancels every accepted one (also on failure).
+Resend does not say whether a scheduled email counts against the daily cap when it is scheduled or when it is sent. `scripts/resend-cap-probe.ts` finds out. It reads `RESEND_DAILY_LIMIT` (default `100`) from the environment, schedules `RESEND_DAILY_LIMIT + 1` emails to `delivered@resend.dev` for tomorrow, then cancels every accepted one (also on failure), two per second with one retry on a rate limit.
+
+The first batch also carries one deliberately invalid recipient, and the probe prints that batch's raw response. Check it lists only the accepted emails in `data` and the invalid one by index in `errors`: the app relies on that shape to match Resend ids to attendees, and records a batch with any other shape under an unknown id.
 
 ```bash
 RESEND_API_KEY=re_... RESEND_FROM="certi <badges@yourdomain.com>" bun run probe:resend-cap
@@ -156,11 +158,16 @@ The browser checks below need a WebGPU-capable browser and are not covered by te
 - [ ] Send badges with Rendered: progress, summary and statuses update. Close mid-render, then resend renders only the rest.
 - [ ] Send badges with Simple while WebGPU is disabled.
 - [ ] Per-row Resend works, including on an already sent row.
+- [ ] Template picker in create mode (Graphite selected): switch to Branded, change the accent, save, and the event keeps that accent.
+- [ ] Edit the event after some emails are scheduled: the event page offers Refresh images, and afterwards `/api/badge/<code>/<id>` serves the new image.
+- [ ] Scan the ID template's QR code with a phone: it opens that attendee's badge page.
+- [ ] Safari < 16.4 (no OffscreenCanvas): the badge page shows the flat badge or the plain card, never a blank box, and the PNG download works.
 
 ## Known limits
 
 - **Import size.** Attendee imports are capped at 2000 rows.
 - **Possible duplicate on timeout.** If a request times out after Resend accepted a batch, re-sending can email those attendees twice.
+- **Unknown Resend ids.** If a batch response doesn't have the expected shape, its emails are recorded as accepted under an unknown id. Those can't be cancelled: deleting such an attendee leaves their scheduled email in place, and a per-row Resend is refused until it has gone out.
 - **Shared cap race.** Two events sending at the same moment can briefly exceed the shared daily cap. The extra emails fail visibly and can be re-sent.
 - **Workers Free CPU.** The 10 ms CPU limit is tight for a 100-email batch. After deploying, measure with `bunx wrangler tail`.
 - **Old browsers.** Flat lettering needs `OffscreenCanvas` 2D (Safari 16.4+).
