@@ -33,8 +33,10 @@ export const authMiddleware = createMiddleware({ type: "function" }).server(asyn
   return next({ context: { user: assertUser(session) } });
 });
 
-// Open Graph images must be absolute URLs, and the origin differs per deployment/preview.
-export const getOriginFn = createServerFn({ method: "GET" }).handler(() => getRequestUrl().origin);
+// The canonical origin: absolute URLs (og:image, the QR on emailed badges, email links) must agree.
+const publicOrigin = () => env.BETTER_AUTH_URL || getRequestUrl().origin;
+
+export const getOriginFn = createServerFn({ method: "GET" }).handler(publicOrigin);
 
 export const getSessionFn = createServerFn({ method: "GET" }).handler(async () => {
   const session = await auth.api.getSession({ headers: getRequestHeaders() });
@@ -117,7 +119,7 @@ export const sendBadgesFn = createServerFn({ method: "POST" })
         client: createEmailClient(cfg),
         now: new Date(),
         dailyLimit: cfg.dailyLimit,
-        origin: env.BETTER_AUTH_URL || getRequestUrl().origin,
+        origin: publicOrigin(),
         from: cfg.from,
       },
       context.user.id,

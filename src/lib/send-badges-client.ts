@@ -10,7 +10,7 @@ export async function sendAllBadges(code: string, attendeeIds?: string[]): Promi
   let ids = attendeeIds;
   for (;;) {
     const next = await sendBadgesFn({ data: { code, attendeeIds: ids } });
-    total = mergeSummaries(total, next);
+    total = mergeSummaries(total, next, { bulk: ids === undefined });
     if (next.remaining <= 0) return total;
     if (ids) ids = next.remainingIds;
   }

@@ -93,7 +93,7 @@ describe("mergeSummaries", () => {
       scheduled: [{ at: "2026-10-29T09:00:00.000Z", count: 5 }],
       remainingIds: [],
     };
-    expect(mergeSummaries(a, b)).toEqual({
+    expect(mergeSummaries(a, b, { bulk: false })).toEqual({
       sentNow: 140,
       failed: 1,
       missingImage: 2,
@@ -102,5 +102,13 @@ describe("mergeSummaries", () => {
       remainingIds: [],
       scheduled: [{ at: "2026-10-29T09:00:00.000Z", count: 15 }],
     });
+  });
+
+  it("bulk: failed comes from the last call, which retries earlier failures", () => {
+    const base = { sentNow: 0, scheduled: [], missingImage: 0, overflow: 0, remainingIds: [] };
+    const first = { ...base, failed: 3, remaining: 5 };
+    const second = { ...base, sentNow: 2, failed: 3, remaining: 0 };
+    expect(mergeSummaries(first, second, { bulk: true }).failed).toBe(3);
+    expect(mergeSummaries(first, second, { bulk: false }).failed).toBe(6);
   });
 });

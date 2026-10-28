@@ -54,9 +54,16 @@ export const emptySummary = (): SendSummary => ({
   remainingIds: [],
 });
 
-// Sent and failed rows are disjoint between calls, so they add up. Missing-image and
-// overflow rows aren't touched by a call, so a later call counts them again: take the max.
-export function mergeSummaries(a: SendSummary, b: SendSummary): SendSummary {
+// Sent rows are never retried, so `sentNow` adds up. Missing-image and overflow rows aren't
+// touched by a call, so a later call counts them again: take the max. Failed rows differ by
+// mode: a bulk call retries earlier failures (and re-counts them if they fail again), so the
+// last call holds the current count; an explicit call continues with `remainingIds`, which
+// excludes rows already attempted, so its failures add up.
+export function mergeSummaries(
+  a: SendSummary,
+  b: SendSummary,
+  { bulk }: { bulk: boolean },
+): SendSummary {
   const slots = new Map<string, number>();
   for (const s of [...a.scheduled, ...b.scheduled]) {
     slots.set(s.at, (slots.get(s.at) ?? 0) + s.count);
@@ -66,7 +73,7 @@ export function mergeSummaries(a: SendSummary, b: SendSummary): SendSummary {
     scheduled: [...slots]
       .map(([at, count]) => ({ at, count }))
       .sort((x, y) => (x.at < y.at ? -1 : 1)),
-    failed: a.failed + b.failed,
+    failed: bulk ? b.failed : a.failed + b.failed,
     missingImage: Math.max(a.missingImage, b.missingImage),
     overflow: Math.max(a.overflow, b.overflow),
     remaining: b.remaining,
