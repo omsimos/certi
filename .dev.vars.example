@@ -21,3 +21,5 @@ EMAIL_MODE=log
 RESEND_API_KEY=
 # e.g. certi <badges@yourdomain.com>
 RESEND_FROM=
+# Emails per rolling day the app may schedule; Resend's free plan allows 100.
+RESEND_DAILY_LIMIT=100

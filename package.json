@@ -13,6 +13,7 @@
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "typecheck": "tsc --noEmit",
+    "probe:resend-cap": "bun scripts/resend-cap-probe.ts",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply certi --local",
