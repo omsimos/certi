@@ -3,13 +3,7 @@ import { describe, expect, it } from "vitest";
 import { getDb } from "../src/db";
 import { ForbiddenError, NotFoundError } from "../src/lib/errors";
 import type { AttendeeInput } from "../src/lib/schemas";
-import {
-  deleteAttendee,
-  findAttendeeByEmail,
-  getCertificate,
-  importAttendees,
-  listAttendees,
-} from "../src/server/attendees";
+import { deleteAttendee, getBadge, importAttendees, listAttendees } from "../src/server/attendees";
 import { createTestEvent, createTestUser } from "./helpers";
 
 const db = getDb(env.DB);
@@ -121,37 +115,21 @@ describe("attendees", () => {
     expect(await listAttendees(db, a.id, ev2.code)).toHaveLength(2);
   });
 
-  it("finds attendees by email ignoring case and whitespace", async () => {
+  it("getBadge returns attendee and event", async () => {
     const { a, ev } = await setup();
     await importAttendees(db, a.id, ev.code, two);
-    expect(await findAttendeeByEmail(db, ev.code, "  ANA@x.com ")).toEqual({
-      id: expect.any(String),
-    });
+    const ana = (await listAttendees(db, a.id, ev.code)).find((r) => r.email === "ana@x.com")!;
+    const badge = await getBadge(db, ev.code, ana.id);
+    expect(badge?.attendee.email).toBe("ana@x.com");
+    expect(badge?.event.code).toBe(ev.code);
   });
 
-  it("does not find an attendee of another event", async () => {
+  it("getBadge returns null when attendee belongs to another event", async () => {
     const { a, ev } = await setup();
     const ev2 = await createTestEvent(db, a.id);
     await importAttendees(db, a.id, ev2.code, two);
-    expect(await findAttendeeByEmail(db, ev.code, "ana@x.com")).toBeNull();
-    expect(await findAttendeeByEmail(db, "no-such-event", "ana@x.com")).toBeNull();
-  });
-
-  it("getCertificate returns attendee and event", async () => {
-    const { a, ev } = await setup();
-    await importAttendees(db, a.id, ev.code, two);
-    const found = await findAttendeeByEmail(db, ev.code, "ana@x.com");
-    const cert = await getCertificate(db, ev.code, found!.id);
-    expect(cert?.attendee.email).toBe("ana@x.com");
-    expect(cert?.event.code).toBe(ev.code);
-  });
-
-  it("getCertificate returns null when attendee belongs to another event", async () => {
-    const { a, ev } = await setup();
-    const ev2 = await createTestEvent(db, a.id);
-    await importAttendees(db, a.id, ev2.code, two);
-    const found = await findAttendeeByEmail(db, ev2.code, "ana@x.com");
-    expect(await getCertificate(db, ev.code, found!.id)).toBeNull();
-    expect(await getCertificate(db, ev.code, "nope")).toBeNull();
+    const ana = (await listAttendees(db, a.id, ev2.code)).find((r) => r.email === "ana@x.com")!;
+    expect(await getBadge(db, ev.code, ana.id)).toBeNull();
+    expect(await getBadge(db, ev.code, "nope")).toBeNull();
   });
 });

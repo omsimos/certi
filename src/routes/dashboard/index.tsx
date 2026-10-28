@@ -33,7 +33,7 @@ function Dashboard() {
           <div>
             <h2 className="text-lg font-medium">No events yet</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Create your first event to start issuing certificates.
+              Create your first event to start issuing badges.
             </p>
           </div>
           <Button nativeButton={false} render={<Link to="/dashboard/new" />}>

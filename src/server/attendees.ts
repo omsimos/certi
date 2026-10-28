@@ -65,21 +65,7 @@ export async function deleteAttendee(
   if (rows.length === 0) throw new NotFoundError("Attendee not found");
 }
 
-export async function findAttendeeByEmail(
-  db: DB,
-  code: string,
-  email: string,
-): Promise<{ id: string } | null> {
-  const [row] = await db
-    .select({ id: attendee.id })
-    .from(attendee)
-    .innerJoin(event, eq(attendee.eventId, event.id))
-    .where(and(eq(event.code, code), eq(attendee.email, email.trim().toLowerCase())))
-    .limit(1);
-  return row ?? null;
-}
-
-export async function getCertificate(
+export async function getBadge(
   db: DB,
   code: string,
   attendeeId: string,

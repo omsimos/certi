@@ -13,7 +13,7 @@ function NewEvent() {
       <div className="w-full max-w-md">
         <h1 className="text-3xl font-bold tracking-tight">New event</h1>
         <p className="mt-1 mb-8 text-muted-foreground">
-          Set up an event, then add the participants who should receive a certificate.
+          Set up an event, then add the participants who should receive a badge.
         </p>
         <EventForm mode="create" />
       </div>

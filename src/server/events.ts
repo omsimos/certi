@@ -63,7 +63,7 @@ export async function updateEvent(
 ): Promise<Event> {
   const prev = await getOwnedEvent(db, ownerId, code);
   // workerd freezes the clock between I/O, so a plain `new Date()` can equal the
-  // previous value. The certificate cache is keyed on updatedAt, so it must strictly grow.
+  // previous value. updatedAt must strictly grow so caches keyed on it are invalidated.
   const updatedAt = new Date(Math.max(Date.now(), prev.updatedAt.getTime() + 1));
   const [row] = await db
     .update(event)

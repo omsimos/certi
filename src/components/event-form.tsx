@@ -119,7 +119,7 @@ export function EventForm({ mode, event }: EventFormProps) {
               className="resize-none"
               aria-invalid={!!errors.description}
             />
-            <FieldDescription>25-250 characters. Shown on the certificate.</FieldDescription>
+            <FieldDescription>25-250 characters. Shown on the event page.</FieldDescription>
             <FieldError errors={[errors.description]} />
           </Field>
         )}

@@ -34,10 +34,10 @@ export function AttendeeTable({ code, attendees }: { code: string; attendees: Ro
   const [deleting, setDeleting] = useState(false);
 
   async function copyLink(attendee: Row) {
-    const url = `${location.origin}/event/${code}/cert/${attendee.id}`;
+    const url = `${location.origin}/event/${code}/badge/${attendee.id}`;
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Certificate link copied");
+      toast.success("Badge link copied");
     } catch {
       toast.error("Could not copy the link");
     }
@@ -95,7 +95,7 @@ export function AttendeeTable({ code, attendees }: { code: string; attendees: Ro
                         variant="ghost"
                         size="icon-sm"
                         onClick={() => copyLink(a)}
-                        aria-label={`Copy certificate link for ${a.firstName} ${a.lastName}`}
+                        aria-label={`Copy badge link for ${a.firstName} ${a.lastName}`}
                       >
                         <LinkIcon />
                       </Button>
@@ -122,7 +122,7 @@ export function AttendeeTable({ code, attendees }: { code: string; attendees: Ro
             <AlertDialogTitle>Remove participant?</AlertDialogTitle>
             <AlertDialogDescription>
               {pending && `${pending.firstName} ${pending.lastName} (${pending.email})`} will no
-              longer be able to open their certificate link.
+              longer be able to open their badge link.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

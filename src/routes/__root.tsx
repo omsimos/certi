@@ -20,7 +20,7 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Certi" },
-      { name: "description", content: "Reusable certificate generator for events" },
+      { name: "description", content: "Holographic badges for events" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

@@ -26,8 +26,7 @@ export function BrowserWarn() {
         <AlertDialogHeader>
           <AlertDialogTitle>In-app browser detected</AlertDialogTitle>
           <AlertDialogDescription>
-            To avoid running into issues, we recommend opening the certificate generator in an
-            external browser.
+            To avoid running into issues, we recommend opening the app in an external browser.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

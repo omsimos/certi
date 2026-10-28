@@ -13,13 +13,7 @@ import {
   eventUpdateSchema,
   MAX_ATTENDEES_PER_IMPORT,
 } from "@/lib/schemas";
-import {
-  deleteAttendee,
-  findAttendeeByEmail,
-  getCertificate,
-  importAttendees,
-  listAttendees,
-} from "@/server/attendees";
+import { deleteAttendee, getBadge, importAttendees, listAttendees } from "@/server/attendees";
 import {
   createEvent,
   getEventByCode,
@@ -96,32 +90,22 @@ export const deleteAttendeeFn = createServerFn({ method: "POST" })
     deleteAttendee(getDb(env.DB), context.user.id, data.code, data.attendeeId),
   );
 
-// The public lookups below validate loosely and re-check inside the handler, so a
-// malformed code, email or id yields `null` ("not found") rather than a thrown error.
-const publicEmailSchema = z.string().trim().toLowerCase().pipe(z.email());
+// The public lookup validates loosely and re-checks inside the handler, so a
+// malformed code or id yields `null` ("not found") rather than a thrown error.
 const attendeeIdSchema = z.string().regex(/^[A-Za-z0-9_-]{10}$/);
 
-export const findAttendeeFn = createServerFn({ method: "POST" })
-  .validator(z.object({ code: z.string().max(64), email: z.string().max(320) }))
-  .handler(async ({ data }) => {
-    const code = eventCodeSchema.safeParse(data.code);
-    const email = publicEmailSchema.safeParse(data.email);
-    if (!code.success || !email.success) return null;
-    return findAttendeeByEmail(getDb(env.DB), code.data, email.data);
-  });
-
-// Certificate pages are shared publicly, so the email and ownerId never leave the server.
-export const getCertificateFn = createServerFn({ method: "GET" })
+// Badge pages are shared publicly, so the email and ownerId never leave the server.
+export const getBadgeFn = createServerFn({ method: "GET" })
   .validator(z.object({ code: z.string().max(64), attendeeId: z.string().max(64) }))
   .handler(async ({ data }) => {
     const code = eventCodeSchema.safeParse(data.code);
     const id = attendeeIdSchema.safeParse(data.attendeeId);
     if (!code.success || !id.success) return null;
-    const cert = await getCertificate(getDb(env.DB), code.data, id.data);
-    if (!cert) return null;
-    const { id: attendeeId, firstName, lastName } = cert.attendee;
+    const badge = await getBadge(getDb(env.DB), code.data, id.data);
+    if (!badge) return null;
+    const { id: attendeeId, firstName, lastName } = badge.attendee;
     return {
       attendee: { id: attendeeId, firstName, lastName },
-      event: toPublicEvent(cert.event),
+      event: toPublicEvent(badge.event),
     };
   });
