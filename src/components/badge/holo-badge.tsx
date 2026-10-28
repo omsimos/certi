@@ -7,14 +7,10 @@ import {
   useState,
 } from "react";
 
+import { exportPainter } from "@/lib/badge/export-painter";
 import { drawFlatBadge } from "@/lib/badge/flat";
-import {
-  type BadgeCardData,
-  cardRect,
-  drawLettering,
-  LETTERING_SIZE,
-  maskFromImageData,
-} from "@/lib/badge/layout";
+import { type BadgeCardData, cardRect } from "@/lib/badge/layout";
+import { buildLettering, type Lettering } from "@/lib/badge/lettering";
 import { type Pose, pointerToCard, poseFromPointer, STILL_POSE, sweepPose } from "@/lib/badge/pose";
 import { type BadgeTemplate, TEMPLATE_MODE } from "@/lib/badge/templates";
 import { cn } from "@/lib/utils";
@@ -57,7 +53,6 @@ export type HoloBadgeProps = {
 };
 
 type Backend = HoloBadgeHandle["backend"];
-type Lettering = { template: BadgeTemplate; canvas: OffscreenCanvas; mask: Uint8Array };
 
 const IDLE_MS = 2500;
 // One idle sweep per export loop, so the live card previews the animated export.
@@ -66,74 +61,10 @@ const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 
 const dpr = () => Math.min(Math.max(devicePixelRatio, 1), 2);
 
-async function loadFonts() {
-  await Promise.all(
-    ["600 16px Geist", "400 16px Geist", '400 16px "Geist Mono"'].map((f) =>
-      document.fonts.load(f),
-    ),
-  ).catch(() => undefined);
-}
-
-async function loadLogo(url: string): Promise<ImageBitmap | null> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    return await createImageBitmap(await res.blob());
-  } catch {
-    return null;
-  }
-}
-
-async function buildLettering(
-  template: BadgeTemplate,
-  data: BadgeCardData,
-  logoUrl: string | null,
-): Promise<Lettering> {
-  const [, logo] = await Promise.all([
-    loadFonts(),
-    template === "branded" && logoUrl ? loadLogo(logoUrl) : null,
-  ]);
-  const [W, H] = LETTERING_SIZE;
-  const canvas = new OffscreenCanvas(W, H);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Couldn't get a 2D canvas context");
-  drawLettering(ctx, template, data, { logo });
-  logo?.close();
-  return { template, canvas, mask: maskFromImageData(ctx.getImageData(0, 0, W, H)) };
-}
-
 function initialBackend(): Backend {
   // Dev-only switch for checking the fallback in a WebGPU browser.
   if (import.meta.env.DEV && new URLSearchParams(location.search).has("flat")) return "flat";
   return "webgpu";
-}
-
-// Draws onto a 2D OffscreenCanvas, so consumers can read pixels or await between frames.
-async function exportPainter(
-  backend: Backend,
-  lettering: Lettering,
-  accent: string,
-  width: number,
-  height: number,
-) {
-  const out = new OffscreenCanvas(width, height);
-  const ctx = out.getContext("2d");
-  if (!ctx) throw new Error("Couldn't get a 2D canvas context");
-  if (backend === "flat") {
-    drawFlatBadge(ctx, width, height, lettering.template, accent, lettering.canvas);
-    return { out, paint: (_pose: Pose) => {}, dispose: () => {} };
-  }
-  const gpuCanvas = new OffscreenCanvas(width, height);
-  const renderer = await createHoloRenderer(gpuCanvas);
-  renderer.setScene({ template: lettering.template, accent, mask: lettering.mask });
-  return {
-    out,
-    paint: (pose: Pose) => {
-      renderer.draw(pose);
-      ctx.drawImage(gpuCanvas, 0, 0);
-    },
-    dispose: () => renderer.dispose(),
-  };
 }
 
 export function HoloBadge({

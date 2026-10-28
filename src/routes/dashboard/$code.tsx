@@ -1,14 +1,21 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { z } from "zod";
 
 import { AddParticipants } from "@/components/add-participants";
 import { AttendeeTable } from "@/components/attendee-table";
 import { EventForm } from "@/components/event-form";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hasErrorName } from "@/lib/errors";
 import { formatEventDate } from "@/lib/format";
-import { getOwnedEventFn, listAttendeesFn } from "@/server/fns";
+import { describeEmailSummary, summarizeEmails } from "@/lib/email-summary";
+import { getOriginFn, getOwnedEventFn, listAttendeesFn } from "@/server/fns";
+
+const SendBadgesDialog = lazy(() =>
+  import("@/components/send-badges-dialog").then((m) => ({ default: m.SendBadgesDialog })),
+);
 
 const searchSchema = z.object({
   // `.default` keeps `tab` optional in links; `.catch` handles junk values.
@@ -19,11 +26,13 @@ export const Route = createFileRoute("/dashboard/$code")({
   validateSearch: searchSchema,
   loader: async ({ params }) => {
     try {
-      const [event, attendees] = await Promise.all([
+      const [event, attendees, origin] = await Promise.all([
         getOwnedEventFn({ data: { code: params.code } }),
         listAttendeesFn({ data: { code: params.code } }),
+        getOriginFn(),
       ]);
-      return { event, attendees };
+      // Computed per load so the render stays pure and statuses refresh on invalidate.
+      return { event, attendees, origin, now: new Date() };
     } catch (err) {
       // A missing event, someone else's event and a malformed code all look the same to the caller.
       if (hasErrorName(err, "ForbiddenError", "NotFoundError", "ValidationError")) throw notFound();
@@ -54,7 +63,14 @@ function EventNotFound() {
 }
 
 function ManageEvent() {
-  const { event, attendees } = Route.useLoaderData();
+  const { event, attendees, origin, now } = Route.useLoaderData();
+  const [sendOpen, setSendOpen] = useState(false);
+  const summary = useMemo(
+    () => summarizeEmails(attendees, event.updatedAt, now),
+    [attendees, event.updatedAt, now],
+  );
+  const nothingToSend = summary.notSent + summary.failed === 0;
+  const logoUrl = event.logoKey ? `/api/logo/${event.code}?v=${event.updatedAt.getTime()}` : null;
   const { tab } = Route.useSearch();
   const navigate = Route.useNavigate();
 
@@ -84,7 +100,44 @@ function ManageEvent() {
 
         <TabsContent value="participants" className="mt-8 flex flex-col gap-12">
           <AddParticipants code={event.code} />
-          <AttendeeTable code={event.code} attendees={attendees} />
+          <div className="flex flex-col gap-3">
+            {attendees.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">{describeEmailSummary(summary)}</p>
+                {nothingToSend ? (
+                  <Tooltip>
+                    <TooltipTrigger render={<span tabIndex={0} />}>
+                      <Button disabled>Send badges</Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Everyone has been emailed</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Button onClick={() => setSendOpen(true)}>Send badges</Button>
+                )}
+              </div>
+            )}
+            <AttendeeTable
+              code={event.code}
+              attendees={attendees}
+              event={event}
+              logoUrl={logoUrl}
+              origin={origin}
+              now={now}
+            />
+          </div>
+          {sendOpen && (
+            <Suspense fallback={null}>
+              <SendBadgesDialog
+                open
+                onOpenChange={setSendOpen}
+                event={event}
+                logoUrl={logoUrl}
+                origin={origin}
+                attendees={attendees}
+                now={now}
+              />
+            </Suspense>
+          )}
         </TabsContent>
 
         <TabsContent value="details" className="mt-8 max-w-md">
