@@ -10,6 +10,7 @@ type Row = Parameters<typeof summarizeEmails>[0][number];
 const row = (o: Partial<Row>): Row => ({
   emailStatus: "not_sent",
   emailScheduledFor: null,
+  emailClaimedAt: null,
   resendId: null,
   badgeImageVersion: null,
   ...o,
@@ -54,6 +55,19 @@ describe("summarizeEmails", () => {
       now,
     );
     expect(s).toMatchObject({ sent: 1, scheduled: [] });
+  });
+
+  it("counts a stale claim as not sent and a fresh one as scheduled", () => {
+    const claim = { emailStatus: "scheduled" as const, emailScheduledFor: now, resendId: null };
+    const s = summarizeEmails(
+      [
+        row({ ...claim, emailClaimedAt: new Date(now.getTime() - 11 * 60_000) }),
+        row({ ...claim, emailClaimedAt: now }),
+      ],
+      updatedAt,
+      now,
+    );
+    expect(s).toMatchObject({ notSent: 1, needsImage: 1, scheduled: [{ count: 1 }] });
   });
 
   it("needsImage counts missing and stale images of rows to send, not sent rows", () => {

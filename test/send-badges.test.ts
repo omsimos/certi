@@ -13,12 +13,8 @@ import {
   type OutgoingEmail,
 } from "../src/server/email/client";
 import { readEmailConfig } from "../src/server/email/config";
-import {
-  CLAIM_TIMEOUT_MS,
-  claimStatements,
-  sendBadges,
-  type SendDeps,
-} from "../src/server/email/send-badges";
+import { CLAIM_TIMEOUT_MS } from "../src/lib/email-status";
+import { claimStatements, sendBadges, type SendDeps } from "../src/server/email/send-badges";
 import { DAY_MS } from "../src/server/email/slots";
 import { createTestEvent, createTestUser } from "./helpers";
 

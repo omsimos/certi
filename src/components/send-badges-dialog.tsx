@@ -30,6 +30,7 @@ export type SendRow = Pick<
   | "lastName"
   | "emailStatus"
   | "emailScheduledFor"
+  | "emailClaimedAt"
   | "resendId"
   | "badgeImageVersion"
 >;

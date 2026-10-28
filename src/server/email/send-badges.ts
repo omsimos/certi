@@ -2,7 +2,7 @@ import { and, asc, eq, gt, inArray, isNotNull, isNull, lt, ne, or, sql } from "d
 
 import type { DB } from "@/db";
 import { attendee, type EmailStatus, type Event } from "@/db/schema";
-import { effectiveEmailStatus } from "@/lib/email-status";
+import { CLAIM_TIMEOUT_MS, effectiveEmailStatus, isStaleClaim } from "@/lib/email-status";
 import { renderBadgeEmail } from "@/server/email/badge-email";
 import type { EmailClient, OutgoingEmail, SendResult } from "@/server/email/client";
 import { DAY_MS, planSendSlots } from "@/server/email/slots";
@@ -15,8 +15,6 @@ export const BATCH_SIZE = 100;
 // Workers Free allows 10 ms of CPU per request, so one call handles one batch's worth
 // and reports the rest as `remaining` for the caller to send with another call.
 export const MAX_EMAILS_PER_REQUEST = 100;
-// A claim this old never recorded its result (the request died), so it may be retried.
-export const CLAIM_TIMEOUT_MS = 10 * 60_000;
 // 90 ids + the SET and status params stay under D1's 100 bound parameters per statement.
 const IDS_PER_STATEMENT = 90;
 
@@ -82,13 +80,9 @@ async function sha256Hex(input: string): Promise<string> {
 
 const claimCutoff = (now: Date) => new Date(now.getTime() - CLAIM_TIMEOUT_MS);
 
-// A claimed row is `scheduled` with no resendId until its send is recorded. While the
-// claim is fresh another request may still be sending it, so nobody else may take it.
+// While a claim is fresh another request may still be sending it, so nobody else may take it.
 const isFreshClaim = (r: Candidate, now: Date) =>
-  r.emailStatus === "scheduled" &&
-  !r.resendId &&
-  !!r.emailClaimedAt &&
-  r.emailClaimedAt.getTime() >= claimCutoff(now).getTime();
+  r.emailStatus === "scheduled" && !r.resendId && !isStaleClaim(r, now);
 
 const staleClaim = (now: Date) =>
   and(

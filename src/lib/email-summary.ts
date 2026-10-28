@@ -4,7 +4,7 @@ import type { SendSummary } from "@/server/email/send-badges";
 
 export type EmailRow = Pick<
   Attendee,
-  "emailStatus" | "emailScheduledFor" | "resendId" | "badgeImageVersion"
+  "emailStatus" | "emailScheduledFor" | "emailClaimedAt" | "resendId" | "badgeImageVersion"
 >;
 
 export type EmailSummary = {

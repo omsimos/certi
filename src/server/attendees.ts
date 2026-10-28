@@ -66,6 +66,7 @@ export async function deleteAttendee(
     .select({
       emailStatus: attendee.emailStatus,
       emailScheduledFor: attendee.emailScheduledFor,
+      emailClaimedAt: attendee.emailClaimedAt,
       resendId: attendee.resendId,
     })
     .from(attendee)
