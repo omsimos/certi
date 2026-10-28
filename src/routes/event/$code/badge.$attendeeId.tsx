@@ -1,10 +1,15 @@
 import { ClientOnly, createFileRoute, notFound } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useRef } from "react";
+
+import type { HoloBadgeHandle } from "@/components/badge/holo-badge";
 
 import type { BadgeCardData } from "@/lib/badge/layout";
 import { formatEventDate } from "@/lib/format";
 import { getBadgeFn, getOriginFn } from "@/server/fns";
 
+const ExportMenu = lazy(() =>
+  import("@/components/badge/export-menu").then((m) => ({ default: m.ExportMenu })),
+);
 const HoloBadge = lazy(() =>
   import("@/components/badge/holo-badge").then((m) => ({ default: m.HoloBadge })),
 );
@@ -44,6 +49,7 @@ const placeholder = <div className="aspect-[300/430] w-full rounded-xl bg-[#090a
 
 function BadgePage() {
   const { event, card, logoUrl } = Route.useLoaderData();
+  const badge = useRef<HoloBadgeHandle>(null);
   return (
     <main className="container flex min-h-screen flex-col items-center justify-center gap-6 py-24">
       <h1 className="sr-only">
@@ -57,10 +63,16 @@ function BadgePage() {
               accent={event.accentColor}
               data={card}
               logoUrl={logoUrl}
+              ref={badge}
             />
           </Suspense>
         </ClientOnly>
       </div>
+      <ClientOnly>
+        <Suspense>
+          <ExportMenu handle={badge} attendeeId={card.attendeeId} />
+        </Suspense>
+      </ClientOnly>
     </main>
   );
 }
