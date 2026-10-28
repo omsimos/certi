@@ -4,9 +4,10 @@ import {
   LETTERING_SIZE,
   maskFromImageData,
 } from "@/lib/badge/layout";
+import { type Canvas2D, create2dCanvas, get2dContext } from "@/lib/badge/canvas";
 import type { BadgeTemplate } from "@/lib/badge/templates";
 
-export type Lettering = { template: BadgeTemplate; canvas: OffscreenCanvas; mask: Uint8Array };
+export type Lettering = { template: BadgeTemplate; canvas: Canvas2D; mask: Uint8Array };
 
 async function loadFonts() {
   await Promise.all(
@@ -36,8 +37,8 @@ export async function buildLettering(
     template === "branded" && logoUrl ? loadLogo(logoUrl) : null,
   ]);
   const [W, H] = LETTERING_SIZE;
-  const canvas = new OffscreenCanvas(W, H);
-  const ctx = canvas.getContext("2d");
+  const canvas = create2dCanvas(W, H);
+  const ctx = get2dContext(canvas);
   if (!ctx) throw new Error("Couldn't get a 2D canvas context");
   drawLettering(ctx, template, data, { logo });
   logo?.close();

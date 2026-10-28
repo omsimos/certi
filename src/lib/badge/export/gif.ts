@@ -1,5 +1,6 @@
 import { applyPalette, GIFEncoder, quantize } from "gifenc";
 
+import { get2dContext } from "@/lib/badge/canvas";
 import { frameTimes } from "@/lib/badge/pose";
 
 import type { BadgeHandle, ExportOptions } from "./types";
@@ -21,7 +22,7 @@ export async function exportGif(
     times,
     signal,
     async onFrame(canvas, i) {
-      const ctx = canvas.getContext("2d");
+      const ctx = get2dContext(canvas);
       if (!ctx) throw new Error("Couldn't read the frame");
       const { data } = ctx.getImageData(0, 0, W, H);
       // A palette per frame: the foil shifts hue, so one shared palette bands badly.

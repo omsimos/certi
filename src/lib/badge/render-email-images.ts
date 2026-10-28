@@ -1,5 +1,6 @@
 import type { Attendee } from "@/db/schema";
 import { exportPainter } from "@/lib/badge/export-painter";
+import { canvasToBlob } from "@/lib/badge/canvas";
 import { badgeCardData } from "@/lib/badge/card-data";
 import { buildLettering } from "@/lib/badge/lettering";
 import { STILL_POSE } from "@/lib/badge/pose";
@@ -59,7 +60,7 @@ export async function renderEmailImages(
     const job = encodeQueue.then(() => {
       painter.setLettering(lettering);
       painter.paint(STILL_POSE);
-      return painter.out.convertToBlob({ type: "image/jpeg", quality: JPEG_QUALITY });
+      return canvasToBlob(painter.out, { type: "image/jpeg", quality: JPEG_QUALITY });
     });
     encodeQueue = job.catch(() => undefined);
     return job;

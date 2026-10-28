@@ -113,3 +113,28 @@ describe("drawFlatBadge", () => {
     expect(calls[0]).toMatchObject({ op: "fillRect", args: [0, 0, W, H], fillStyle: "#090a0c" });
   });
 });
+
+describe("drawFlatBadge without OffscreenCanvas", () => {
+  it("tints the lettering on a DOM canvas instead", () => {
+    // Safari before 16.4: no OffscreenCanvas, only <canvas>.
+    vi.stubGlobal("OffscreenCanvas", undefined);
+    const created: FakeOffscreenCanvas[] = [];
+    vi.stubGlobal("document", {
+      createElement(tag: string) {
+        expect(tag).toBe("canvas");
+        const c = new FakeOffscreenCanvas(0, 0);
+        created.push(c);
+        return c;
+      },
+    });
+
+    const r = cardRect(W, H);
+    const calls = draw("graphite");
+
+    expect(created).toHaveLength(1);
+    expect([created[0].width, created[0].height]).toEqual([Math.ceil(r.w), Math.ceil(r.h)]);
+    expect(created[0].ctx.calls.map((c) => c.op)).toEqual(["drawImage", "fillRect"]);
+    const image = calls.find((c) => c.op === "drawImage");
+    expect(image?.args[0]).toBe(created[0]);
+  });
+});

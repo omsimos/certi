@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 
+import { type Canvas2D, canvasToBlob } from "@/lib/badge/canvas";
 import { exportPainter } from "@/lib/badge/export-painter";
 import { drawFlatBadge } from "@/lib/badge/flat";
 import { type BadgeCardData, cardRect } from "@/lib/badge/layout";
@@ -15,6 +16,7 @@ import { type Pose, pointerToCard, poseFromPointer, STILL_POSE, sweepPose } from
 import { type BadgeTemplate, TEMPLATE_MODE } from "@/lib/badge/templates";
 import { cn } from "@/lib/utils";
 
+import { PlainBadgeCard } from "./plain-badge-card";
 import {
   createHoloRenderer,
   type HoloRenderer,
@@ -35,7 +37,7 @@ export type HoloBadgeHandle = {
     width: number;
     height: number;
     times: number[];
-    onFrame: (canvas: OffscreenCanvas, i: number) => Promise<void>;
+    onFrame: (canvas: Canvas2D, i: number) => Promise<void>;
     signal?: AbortSignal;
   }): Promise<void>;
 };
@@ -79,6 +81,8 @@ export function HoloBadge({
 }: HoloBadgeProps) {
   const [backend, setBackend] = useState<Backend>(initialBackend);
   const [lettering, setLettering] = useState<Lettering | null>(null);
+  // The card couldn't be drawn (e.g. a canvas API this browser lacks): show it as plain HTML.
+  const [failed, setFailed] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tiltRef = useRef<HTMLDivElement>(null);
   const sheenRef = useRef<HTMLDivElement>(null);
@@ -113,8 +117,15 @@ export function HoloBadge({
     const p = buildLettering(template, data, logoUrl);
     letteringPromise.current = p;
     p.then(
-      (l) => !cancelled && setLettering(l),
-      (err) => console.error(err),
+      (l) => {
+        if (cancelled) return;
+        setLettering(l);
+        setFailed(false);
+      },
+      (err) => {
+        console.error(err);
+        if (!cancelled) setFailed(true);
+      },
     );
     return () => {
       cancelled = true;
@@ -128,7 +139,7 @@ export function HoloBadge({
   }, [lettering, accent]);
 
   useEffect(() => {
-    if (backend !== "webgpu") return;
+    if (backend !== "webgpu" || failed) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const reduce = matchMedia(REDUCED_MOTION);
@@ -199,26 +210,35 @@ export function HoloBadge({
       cancelAnimationFrame(raf);
       renderer?.dispose();
     };
-  }, [backend]);
+  }, [backend, failed]);
 
   useEffect(() => {
-    if (backend !== "flat" || !lettering) return;
+    if (backend !== "flat" || !lettering || failed) return;
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      setFailed(true);
+      return;
+    }
     const paint = () => {
       const w = Math.round(canvas.clientWidth * dpr());
       const h = Math.round(canvas.clientHeight * dpr());
       if (!w || !h) return;
       canvas.width = w;
       canvas.height = h;
-      drawFlatBadge(ctx, w, h, lettering.template, accent, lettering.canvas);
+      try {
+        drawFlatBadge(ctx, w, h, lettering.template, accent, lettering.canvas);
+      } catch (err) {
+        console.error(err);
+        setFailed(true);
+      }
     };
     // Also fires once on observe, which does the first paint.
     const observer = new ResizeObserver(paint);
     observer.observe(canvas);
     return () => observer.disconnect();
-  }, [backend, lettering, accent]);
+  }, [backend, lettering, accent, failed]);
 
   useEffect(() => onBackend.current?.(backend), [backend]);
 
@@ -238,7 +258,7 @@ export function HoloBadge({
         const painter = await exportPainter(backend, l, props.current.accent, width, height);
         try {
           painter.paint(still);
-          return await painter.out.convertToBlob({ type, quality });
+          return await canvasToBlob(painter.out, { type, quality });
         } finally {
           painter.dispose();
         }
@@ -261,6 +281,8 @@ export function HoloBadge({
   }, [backend]);
 
   const flat = backend === "flat";
+
+  if (failed) return <PlainBadgeCard data={data} className={className} />;
 
   const onPointer = (e: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!interactive || !e.isPrimary) return;

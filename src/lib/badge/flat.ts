@@ -1,3 +1,4 @@
+import { create2dCanvas, get2dContext } from "./canvas";
 import { CARD_HALF, cardRect } from "./layout";
 import type { BadgeTemplate } from "./templates";
 
@@ -57,8 +58,8 @@ export function drawFlatBadge(
   // The lettering is a white alpha mask; recolor it on its own layer so the card stays untouched.
   const tw = Math.max(1, Math.ceil(card.w));
   const th = Math.max(1, Math.ceil(card.h));
-  const layer = new OffscreenCanvas(tw, th);
-  const lctx = layer.getContext("2d");
+  const layer = create2dCanvas(tw, th);
+  const lctx = get2dContext(layer);
   if (!lctx) return;
   lctx.drawImage(lettering, 0, 0, tw, th);
   lctx.globalCompositeOperation = "source-in";

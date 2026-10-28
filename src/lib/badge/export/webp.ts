@@ -1,3 +1,4 @@
+import { canvasToBlob } from "@/lib/badge/canvas";
 import { frameTimes } from "@/lib/badge/pose";
 
 import type { BadgeHandle, ExportOptions } from "./types";
@@ -20,7 +21,7 @@ export async function exportWebp(
     times,
     signal,
     async onFrame(canvas, i) {
-      const blob = await canvas.convertToBlob({ type: "image/webp", quality: 0.9 });
+      const blob = await canvasToBlob(canvas, { type: "image/webp", quality: 0.9 });
       frames.push(new Uint8Array(await blob.arrayBuffer()));
       onProgress?.((i + 1) / times.length);
     },
