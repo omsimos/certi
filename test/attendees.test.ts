@@ -95,7 +95,7 @@ describe("attendees", () => {
     await importAttendees(db, a.id, ev.code, two);
     const [first] = await listAttendees(db, a.id, ev.code);
     await expect(listAttendees(db, b.id, ev.code)).rejects.toBeInstanceOf(ForbiddenError);
-    await expect(deleteAttendee(db, b.id, ev.code, first.id)).rejects.toBeInstanceOf(
+    await expect(deleteAttendee(db, env.BUCKET, b.id, ev.code, first.id)).rejects.toBeInstanceOf(
       ForbiddenError,
     );
   });
@@ -104,9 +104,11 @@ describe("attendees", () => {
     const { a, ev } = await setup();
     await importAttendees(db, a.id, ev.code, two);
     const [first] = await listAttendees(db, a.id, ev.code);
-    await deleteAttendee(db, a.id, ev.code, first.id);
+    await deleteAttendee(db, env.BUCKET, a.id, ev.code, first.id);
     expect(await listAttendees(db, a.id, ev.code)).toHaveLength(1);
-    await expect(deleteAttendee(db, a.id, ev.code, first.id)).rejects.toBeInstanceOf(NotFoundError);
+    await expect(deleteAttendee(db, env.BUCKET, a.id, ev.code, first.id)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
   });
 
   it("cannot delete an attendee of another event through an owned code", async () => {
@@ -114,8 +116,47 @@ describe("attendees", () => {
     const ev2 = await createTestEvent(db, a.id);
     await importAttendees(db, a.id, ev2.code, two);
     const [other] = await listAttendees(db, a.id, ev2.code);
-    await expect(deleteAttendee(db, a.id, ev.code, other.id)).rejects.toBeInstanceOf(NotFoundError);
+    await expect(deleteAttendee(db, env.BUCKET, a.id, ev.code, other.id)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
     expect(await listAttendees(db, a.id, ev2.code)).toHaveLength(2);
+  });
+
+  it("deletes the attendee's badge image along with the row", async () => {
+    const { a, ev } = await setup();
+    await importAttendees(db, a.id, ev.code, two);
+    const [first, second] = await listAttendees(db, a.id, ev.code);
+    const key = `badges/v1/${first.id}/1.jpg`;
+    const kept = `badges/v1/${second.id}/1.jpg`;
+    await env.BUCKET.put(key, new Uint8Array([0xff, 0xd8, 0xff]));
+    await env.BUCKET.put(kept, new Uint8Array([0xff, 0xd8, 0xff]));
+    await db.update(attendee).set({ badgeImageKey: key }).where(eq(attendee.id, first.id));
+    await db.update(attendee).set({ badgeImageKey: kept }).where(eq(attendee.id, second.id));
+
+    await deleteAttendee(db, env.BUCKET, a.id, ev.code, first.id);
+
+    expect(await env.BUCKET.head(key)).toBeNull();
+    expect(await env.BUCKET.head(kept)).not.toBeNull();
+  });
+
+  it("still deletes the attendee when removing the image fails", async () => {
+    const { a, ev } = await setup();
+    await importAttendees(db, a.id, ev.code, two);
+    const [first] = await listAttendees(db, a.id, ev.code);
+    await db
+      .update(attendee)
+      .set({ badgeImageKey: `badges/v1/${first.id}/1.jpg` })
+      .where(eq(attendee.id, first.id));
+    const bucket = {
+      delete: vi.fn(async () => {
+        throw new Error("R2 is down");
+      }),
+    } as unknown as R2Bucket;
+
+    await deleteAttendee(db, bucket, a.id, ev.code, first.id);
+
+    expect(bucket.delete).toHaveBeenCalledWith(`badges/v1/${first.id}/1.jpg`);
+    expect((await listAttendees(db, a.id, ev.code)).map((r) => r.id)).not.toContain(first.id);
   });
 
   async function scheduledAttendee(emailScheduledFor = new Date(Date.now() + 86_400_000)) {
@@ -132,7 +173,7 @@ describe("attendees", () => {
   it("cancels a scheduled email before deleting the attendee", async () => {
     const { a, ev, id } = await scheduledAttendee();
     const cancel = vi.fn(async () => {});
-    await deleteAttendee(db, a.id, ev.code, id, { cancel });
+    await deleteAttendee(db, env.BUCKET, a.id, ev.code, id, { cancel });
     expect(cancel).toHaveBeenCalledWith("re_123");
     expect((await listAttendees(db, a.id, ev.code)).map((r) => r.id)).not.toContain(id);
   });
@@ -142,7 +183,9 @@ describe("attendees", () => {
     const cancel = vi.fn(async () => {
       throw new Error("Resend is down");
     });
-    const err = await deleteAttendee(db, a.id, ev.code, id, { cancel }).catch((e: unknown) => e);
+    const err = await deleteAttendee(db, env.BUCKET, a.id, ev.code, id, { cancel }).catch(
+      (e: unknown) => e,
+    );
     expect(err).toBeInstanceOf(ScheduledEmailCancelError);
     expect((err as Error).message).toBe("Couldn't cancel the scheduled email. Try again.");
     expect((await listAttendees(db, a.id, ev.code)).map((r) => r.id)).toContain(id);
@@ -153,7 +196,7 @@ describe("attendees", () => {
     const cancel = vi.fn(async () => {
       throw new Error("Email already sent");
     });
-    await deleteAttendee(db, a.id, ev.code, id, { cancel });
+    await deleteAttendee(db, env.BUCKET, a.id, ev.code, id, { cancel });
     expect(cancel).not.toHaveBeenCalled();
     expect((await listAttendees(db, a.id, ev.code)).map((r) => r.id)).not.toContain(id);
   });
@@ -164,7 +207,7 @@ describe("attendees", () => {
     const cancel = vi.fn(async () => {
       throw new Error("Email not found");
     });
-    await deleteAttendee(db, a.id, ev.code, id, { cancel });
+    await deleteAttendee(db, env.BUCKET, a.id, ev.code, id, { cancel });
     expect(cancel).not.toHaveBeenCalled();
     expect((await listAttendees(db, a.id, ev.code)).map((r) => r.id)).not.toContain(id);
   });
@@ -174,7 +217,7 @@ describe("attendees", () => {
     await importAttendees(db, a.id, ev.code, two);
     const [first] = await listAttendees(db, a.id, ev.code);
     const cancel = vi.fn(async () => {});
-    await deleteAttendee(db, a.id, ev.code, first.id, { cancel });
+    await deleteAttendee(db, env.BUCKET, a.id, ev.code, first.id, { cancel });
     expect(cancel).not.toHaveBeenCalled();
   });
 

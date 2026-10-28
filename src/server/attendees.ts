@@ -55,6 +55,7 @@ export async function listAttendees(db: DB, ownerId: string, code: string): Prom
 
 export async function deleteAttendee(
   db: DB,
+  bucket: R2Bucket,
   ownerId: string,
   code: string,
   attendeeId: string,
@@ -69,6 +70,7 @@ export async function deleteAttendee(
       emailScheduledFor: attendee.emailScheduledFor,
       emailClaimedAt: attendee.emailClaimedAt,
       resendId: attendee.resendId,
+      badgeImageKey: attendee.badgeImageKey,
     })
     .from(attendee)
     .where(scope)
@@ -91,6 +93,8 @@ export async function deleteAttendee(
 
   const rows = await db.delete(attendee).where(scope).returning({ id: attendee.id });
   if (rows.length === 0) throw new NotFoundError("Attendee not found");
+  // The row is gone either way; a leftover object is only storage, so don't fail the delete.
+  if (row.badgeImageKey) await bucket.delete(row.badgeImageKey).catch(() => undefined);
 }
 
 export async function getBadge(

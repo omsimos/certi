@@ -94,7 +94,7 @@ export const deleteAttendeeFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(z.object({ code: eventCodeSchema, attendeeId: z.string().min(1).max(64) }))
   .handler(({ data, context }) =>
-    deleteAttendee(getDb(env.DB), context.user.id, data.code, data.attendeeId, {
+    deleteAttendee(getDb(env.DB), env.BUCKET, context.user.id, data.code, data.attendeeId, {
       // Built lazily: only a scheduled email needs Resend, so deletes work without a key.
       cancel: (resendId) => createEmailClient(readEmailConfig(env)).cancel(resendId),
     }),
