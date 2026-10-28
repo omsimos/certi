@@ -6,6 +6,7 @@ import { attendee, event, type Attendee, type Event } from "@/db/schema";
 import { effectiveEmailStatus } from "@/lib/email-status";
 import { NotFoundError, ScheduledEmailCancelError } from "@/lib/errors";
 import type { AttendeeInput } from "@/lib/schemas";
+import { UNKNOWN_RESEND_ID } from "@/server/email/client";
 import { getOwnedEvent } from "@/server/events";
 
 export { parseAttendeeRows } from "@/lib/attendee-rows";
@@ -75,9 +76,10 @@ export async function deleteAttendee(
   if (!row) throw new NotFoundError("Attendee not found");
 
   // Otherwise the deleted attendee still gets an email whose link 404s. A past-dated
-  // one has already gone out, and Resend would refuse the cancel.
+  // one has already gone out, and Resend would refuse the cancel. An unknown id can't
+  // be cancelled at all, so that email may still arrive.
   const status = effectiveEmailStatus(row, opts.now ?? new Date());
-  if (status === "scheduled" && row.resendId && opts.cancel) {
+  if (status === "scheduled" && row.resendId && row.resendId !== UNKNOWN_RESEND_ID && opts.cancel) {
     try {
       await opts.cancel(row.resendId);
     } catch (err) {

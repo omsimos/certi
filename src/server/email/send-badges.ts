@@ -4,7 +4,12 @@ import type { DB } from "@/db";
 import { attendee, type EmailStatus, type Event } from "@/db/schema";
 import { CLAIM_TIMEOUT_MS, effectiveEmailStatus, isStaleClaim } from "@/lib/email-status";
 import { renderBadgeEmail } from "@/server/email/badge-email";
-import type { EmailClient, OutgoingEmail, SendResult } from "@/server/email/client";
+import {
+  type EmailClient,
+  type OutgoingEmail,
+  type SendResult,
+  UNKNOWN_RESEND_ID,
+} from "@/server/email/client";
 import { DAY_MS, planSendSlots } from "@/server/email/slots";
 import { getOwnedEvent } from "@/server/events";
 
@@ -104,9 +109,12 @@ const explicitSendable = (now: Date) =>
     lt(attendee.emailClaimedAt, claimCutoff(now)),
   );
 
-// A past-dated schedule has gone out and Resend would refuse the cancel.
-const needsCancel = (r: Candidate, explicit: boolean, now: Date) =>
+// An explicit resend of an email Resend still holds; a past-dated one has gone out.
+const isPendingSchedule = (r: Candidate, explicit: boolean, now: Date) =>
   explicit && !!r.resendId && effectiveEmailStatus(r, now) === "scheduled";
+
+const needsCancel = (r: Candidate, explicit: boolean, now: Date) =>
+  isPendingSchedule(r, explicit, now) && r.resendId !== UNKNOWN_RESEND_ID;
 
 async function loadCandidates(
   db: DB,
@@ -305,8 +313,13 @@ export async function sendBadges(
 
     const toClaim: Candidate[] = [];
     for (const r of rows) {
-      if (!needsCancel(r, explicit, now)) {
+      if (!isPendingSchedule(r, explicit, now)) {
         toClaim.push(r);
+        continue;
+      }
+      if (r.resendId === UNKNOWN_RESEND_ID) {
+        // It can't be cancelled and may still go out, so sending another would double up.
+        summary.failed++;
         continue;
       }
       budget--;

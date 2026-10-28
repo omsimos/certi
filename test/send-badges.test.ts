@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { asc, eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getDb } from "../src/db";
 import { attendee, event, type Event } from "../src/db/schema";
 import { ForbiddenError } from "../src/lib/errors";
@@ -11,6 +11,7 @@ import {
   emailLog,
   type EmailClient,
   type OutgoingEmail,
+  UNKNOWN_RESEND_ID,
 } from "../src/server/email/client";
 import { readEmailConfig } from "../src/server/email/config";
 import { CLAIM_TIMEOUT_MS } from "../src/lib/email-status";
@@ -514,6 +515,29 @@ describe("sendBadges", () => {
     expect((await rowsOf(ev))[0].resendId).not.toBe("re_gone");
   });
 
+  it("records an unmatched batch as scheduled and refuses to resend over it", async () => {
+    const now = tick();
+    const { ownerId, ev, ids } = await seed({ images: 2 });
+    const unknown: EmailClient = {
+      sendBatch: async (emails) => emails.map(() => ({ ok: true, id: UNKNOWN_RESEND_ID })),
+      cancel: async () => {
+        throw new Error("must not cancel an unknown id");
+      },
+    };
+    await sendBadges(deps(now, { client: unknown, dailyLimit: 1 }), ownerId, ev.code);
+    const before = (await rowsOf(ev))[1];
+    expect(before).toMatchObject({ emailStatus: "scheduled", resendId: UNKNOWN_RESEND_ID });
+
+    const { client, calls } = countingClient(unknown);
+    const summary = await sendBadges(deps(now, { client, dailyLimit: 1 }), ownerId, ev.code, {
+      attendeeIds: [ids[1]],
+    });
+
+    expect(calls).toEqual({ batches: 0, cancels: 0 });
+    expect(summary).toMatchObject({ sentNow: 0, scheduled: [], failed: 1 });
+    expect((await rowsOf(ev))[1]).toEqual(before);
+  });
+
   it.each([false, true])(
     "keeps a 90-id claim under D1's 100 parameters (explicit %s)",
     (explicit) => {
@@ -653,6 +677,26 @@ describe("createEmailClient", () => {
       { ok: false, error: "Invalid `to` field." },
       { ok: true, id: "id-c" },
     ]);
+  });
+
+  it.each([
+    ["ids for every email despite errors", [{ id: "a" }, { id: "b" }, { id: "c" }], [1]],
+    ["too few ids", [{ id: "a" }], []],
+    ["an error index out of range", [{ id: "a" }, { id: "b" }], [3]],
+    ["a repeated error index", [{ id: "a" }], [1, 1]],
+  ])("records the batch as accepted with an unknown id on %s", async (_, data, indexes) => {
+    const { f } = fakeFetch(200, {
+      data,
+      errors: indexes.map((index) => ({ index, message: "Invalid `to` field." })),
+    });
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    const client = createEmailClient({ mode: "resend", apiKey: "re_test", fetch: f });
+
+    const results = await client.sendBatch([email("a"), email("b"), email("c")], "k");
+
+    expect(results).toEqual(Array(3).fill({ ok: true, id: UNKNOWN_RESEND_ID }));
+    expect(logged).toHaveBeenCalledOnce();
+    logged.mockRestore();
   });
 
   it("fails every email when the whole call is rejected", async () => {

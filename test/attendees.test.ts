@@ -6,6 +6,7 @@ import { attendee } from "../src/db/schema";
 import { ForbiddenError, NotFoundError, ScheduledEmailCancelError } from "../src/lib/errors";
 import type { AttendeeInput } from "../src/lib/schemas";
 import { deleteAttendee, getBadge, importAttendees, listAttendees } from "../src/server/attendees";
+import { UNKNOWN_RESEND_ID } from "../src/server/email/client";
 import { createTestEvent, createTestUser } from "./helpers";
 
 const db = getDb(env.DB);
@@ -151,6 +152,17 @@ describe("attendees", () => {
     const { a, ev, id } = await scheduledAttendee(new Date(Date.now() - 60_000));
     const cancel = vi.fn(async () => {
       throw new Error("Email already sent");
+    });
+    await deleteAttendee(db, a.id, ev.code, id, { cancel });
+    expect(cancel).not.toHaveBeenCalled();
+    expect((await listAttendees(db, a.id, ev.code)).map((r) => r.id)).not.toContain(id);
+  });
+
+  it("deletes a scheduled attendee whose Resend id is unknown without cancelling", async () => {
+    const { a, ev, id } = await scheduledAttendee();
+    await db.update(attendee).set({ resendId: UNKNOWN_RESEND_ID }).where(eq(attendee.id, id));
+    const cancel = vi.fn(async () => {
+      throw new Error("Email not found");
     });
     await deleteAttendee(db, a.id, ev.code, id, { cancel });
     expect(cancel).not.toHaveBeenCalled();

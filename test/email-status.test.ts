@@ -16,6 +16,11 @@ describe("effectiveEmailStatus", () => {
     expect(effectiveEmailStatus(row({ emailScheduledFor: new Date(0) }), now)).toBe("sent");
   });
 
+  it("treats a past-dated schedule with an unknown Resend id as sent", () => {
+    const r = row({ emailScheduledFor: new Date(0), resendId: "unknown" });
+    expect(effectiveEmailStatus(r, now)).toBe("sent");
+  });
+
   it("keeps a future schedule scheduled", () => {
     const later = new Date(now.getTime() + 1);
     expect(effectiveEmailStatus(row({ emailScheduledFor: later }), now)).toBe("scheduled");

@@ -9,6 +9,10 @@ export type OutgoingEmail = {
 
 export type SendResult = { ok: true; id: string } | { ok: false; error: string };
 
+// Stands in for the id of an email Resend accepted that we couldn't match to its request.
+// It can't be cancelled, and unlike null it doesn't read as an unsent claim to be re-sent.
+export const UNKNOWN_RESEND_ID = "unknown";
+
 export type EmailClient = {
   // Index-aligned with `emails`.
   sendBatch(emails: OutgoingEmail[], idempotencyKey: string): Promise<SendResult[]>;
@@ -54,10 +58,25 @@ type BatchResponse = {
 };
 
 // Permissive validation lists only the created emails in `data`, in request order,
-// and the rejected ones by request index in `errors`.
+// and the rejected ones by request index in `errors`. That shape is undocumented, so
+// anything else is treated as all accepted: guessing could put one attendee's id on
+// another (and cancel the wrong email later), and marking them failed would re-send.
 function mapBatchResponse(count: number, body: BatchResponse): SendResult[] {
   const data = body.data ?? [];
-  const errors = new Map((body.errors ?? []).map((e) => [e.index, e.message]));
+  const rawErrors = body.errors ?? [];
+  const errors = new Map(rawErrors.map((e) => [e.index, e.message]));
+  const compacted =
+    errors.size === rawErrors.length &&
+    data.length === count - errors.size &&
+    [...errors.keys()].every((i) => Number.isInteger(i) && i >= 0 && i < count);
+  if (!compacted) {
+    console.error("Unexpected Resend batch response shape", {
+      count,
+      ids: data.length,
+      errorIndexes: rawErrors.map((e) => e.index),
+    });
+    return Array.from({ length: count }, (): SendResult => ({ ok: true, id: UNKNOWN_RESEND_ID }));
+  }
   let next = 0;
   return Array.from({ length: count }, (_, i): SendResult => {
     const error = errors.get(i);
