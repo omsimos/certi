@@ -539,11 +539,12 @@ describe("sendBadges", () => {
   });
 
   it.each([false, true])(
-    "keeps a 90-id claim under D1's 100 parameters (explicit %s)",
+    "claims 80 ids per statement with headroom under D1's 100 parameters (explicit %s)",
     (explicit) => {
-      const ids = Array.from({ length: 90 }, (_, i) => `id${i}`);
-      const [statement] = claimStatements(db, ids, new Date(), new Date(), explicit);
-      expect(statement.toSQL().params.length).toBeLessThanOrEqual(100);
+      const ids = Array.from({ length: 81 }, (_, i) => `id${i}`);
+      const statements = claimStatements(db, ids, new Date(), new Date(), explicit);
+      expect(statements).toHaveLength(2);
+      expect(statements[0].toSQL().params.length).toBeLessThanOrEqual(90);
     },
   );
 

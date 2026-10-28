@@ -20,8 +20,9 @@ export const BATCH_SIZE = 100;
 // Workers Free allows 10 ms of CPU per request, so one call handles one batch's worth
 // and reports the rest as `remaining` for the caller to send with another call.
 export const MAX_EMAILS_PER_REQUEST = 100;
-// 90 ids + the SET and status params stay under D1's 100 bound parameters per statement.
-const IDS_PER_STATEMENT = 90;
+// 80 ids + the SET and status params (9 today) leave headroom under D1's 100 bound
+// parameters per statement for a condition added later.
+const IDS_PER_STATEMENT = 80;
 
 export type SendDeps = {
   db: DB;
