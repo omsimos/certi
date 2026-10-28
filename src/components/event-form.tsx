@@ -1,12 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useRouter } from "@tanstack/react-router";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import type { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { TemplatePicker } from "@/components/template-picker";
 import { Textarea } from "@/components/ui/textarea";
 import type { Event } from "@/db/schema";
 import { hasErrorName } from "@/lib/errors";
@@ -20,7 +21,15 @@ type EventFormProps =
       mode: "edit";
       event: Pick<
         Event,
-        "code" | "title" | "description" | "organizer" | "date" | "template" | "accentColor"
+        | "code"
+        | "title"
+        | "description"
+        | "organizer"
+        | "date"
+        | "template"
+        | "accentColor"
+        | "logoKey"
+        | "updatedAt"
       >;
     };
 
@@ -43,6 +52,10 @@ export function EventForm({ mode, event }: EventFormProps) {
     },
   });
   const { errors, isSubmitting } = form.formState;
+  const [title, organizer, date, template, accentColor] = useWatch({
+    control: form.control,
+    name: ["title", "organizer", "date", "template", "accentColor"],
+  });
 
   async function onSubmit(values: EventInput) {
     try {
@@ -163,6 +176,25 @@ export function EventForm({ mode, event }: EventFormProps) {
             <FieldError errors={[errors.date]} />
           </Field>
         )}
+      />
+
+      <TemplatePicker
+        template={template ?? "graphite"}
+        accent={accentColor ?? DEFAULT_ACCENT}
+        onTemplateChange={(t) => form.setValue("template", t, { shouldDirty: true })}
+        onAccentChange={(a) => form.setValue("accentColor", a, { shouldDirty: true })}
+        preview={{ title: title ?? "", organizer: organizer ?? "", date: date ?? "" }}
+        logo={
+          event
+            ? {
+                code: event.code,
+                // The version busts the cache whenever the logo changes.
+                url: event.logoKey
+                  ? `/api/logo/${event.code}?v=${event.updatedAt.getTime()}`
+                  : null,
+              }
+            : undefined
+        }
       />
 
       <Button type="submit" disabled={isSubmitting}>

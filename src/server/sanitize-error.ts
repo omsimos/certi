@@ -1,10 +1,10 @@
 import { isNotFound, isRedirect } from "@tanstack/react-router";
 import { ZodError } from "zod";
 
-import { EventCodeTakenError, ForbiddenError, NotFoundError } from "@/lib/errors";
+import { EventCodeTakenError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 
 // Domain errors whose message is written for users and safe to show.
-const DOMAIN_ERRORS = [NotFoundError, ForbiddenError, EventCodeTakenError];
+const DOMAIN_ERRORS = [NotFoundError, ForbiddenError, EventCodeTakenError, ValidationError];
 
 // Standard Schema validators (zod 4 included) make the server-fn core throw a plain
 // `Error` whose message is the JSON-stringified issue list, so `instanceof` can't catch them.

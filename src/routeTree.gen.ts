@@ -16,6 +16,7 @@ import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
 import { Route as DashboardCodeRouteImport } from './routes/dashboard/$code'
 import { Route as DashboardNewRouteImport } from './routes/dashboard/new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiLogoCodeRouteImport } from './routes/api/logo/$code'
 import { Route as EventCodeIndexRouteImport } from './routes/event/$code/index'
 import { Route as EventCodeBadgeAttendeeIdRouteImport } from './routes/event/$code/badge.$attendeeId'
 
@@ -54,6 +55,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiLogoCodeRoute = ApiLogoCodeRouteImport.update({
+  id: '/api/logo/$code',
+  path: '/api/logo/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EventCodeIndexRoute = EventCodeIndexRouteImport.update({
   id: '/event/$code/',
   path: '/event/$code/',
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/logo/$code': typeof ApiLogoCodeRoute
   '/event/$code/': typeof EventCodeIndexRoute
   '/event/$code/badge/$attendeeId': typeof EventCodeBadgeAttendeeIdRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboard': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/logo/$code': typeof ApiLogoCodeRoute
   '/event/$code': typeof EventCodeIndexRoute
   '/event/$code/badge/$attendeeId': typeof EventCodeBadgeAttendeeIdRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/dashboard/new': typeof DashboardNewRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/logo/$code': typeof ApiLogoCodeRoute
   '/event/$code/': typeof EventCodeIndexRoute
   '/event/$code/badge/$attendeeId': typeof EventCodeBadgeAttendeeIdRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/dashboard/new'
     | '/dashboard/'
     | '/api/auth/$'
+    | '/api/logo/$code'
     | '/event/$code/'
     | '/event/$code/badge/$attendeeId'
   fileRoutesByTo: FileRoutesByTo
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/dashboard/new'
     | '/dashboard'
     | '/api/auth/$'
+    | '/api/logo/$code'
     | '/event/$code'
     | '/event/$code/badge/$attendeeId'
   id:
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/dashboard/new'
     | '/dashboard/'
     | '/api/auth/$'
+    | '/api/logo/$code'
     | '/event/$code/'
     | '/event/$code/badge/$attendeeId'
   fileRoutesById: FileRoutesById
@@ -139,6 +151,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   LoginRoute: typeof LoginRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiLogoCodeRoute: typeof ApiLogoCodeRoute
   EventCodeIndexRoute: typeof EventCodeIndexRoute
   EventCodeBadgeAttendeeIdRoute: typeof EventCodeBadgeAttendeeIdRoute
 }
@@ -194,6 +207,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/logo/$code': {
+      id: '/api/logo/$code'
+      path: '/api/logo/$code'
+      fullPath: '/api/logo/$code'
+      preLoaderRoute: typeof ApiLogoCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/event/$code/': {
       id: '/event/$code/'
       path: '/event/$code'
@@ -232,6 +252,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiLogoCodeRoute: ApiLogoCodeRoute,
   EventCodeIndexRoute: EventCodeIndexRoute,
   EventCodeBadgeAttendeeIdRoute: EventCodeBadgeAttendeeIdRoute,
 }

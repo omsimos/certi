@@ -12,6 +12,10 @@ export class EventCodeTakenError extends Error {
   override name = "EventCodeTakenError";
 }
 
+export class ValidationError extends Error {
+  override name = "ValidationError";
+}
+
 export function assertUser<U>(session: { user: U } | null | undefined): U {
   if (!session) throw new ForbiddenError("Sign in required");
   return session.user;

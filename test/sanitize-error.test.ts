@@ -1,7 +1,12 @@
 import { notFound, redirect } from "@tanstack/react-router";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { EventCodeTakenError, ForbiddenError, NotFoundError } from "../src/lib/errors";
+import {
+  EventCodeTakenError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from "../src/lib/errors";
 import { sanitizeError } from "../src/server/sanitize-error";
 
 describe("sanitizeError", () => {
@@ -9,6 +14,7 @@ describe("sanitizeError", () => {
     ["NotFoundError", new NotFoundError("Event not found")],
     ["ForbiddenError", new ForbiddenError("Sign in required")],
     ["EventCodeTakenError", new EventCodeTakenError("Code taken")],
+    ["ValidationError", new ValidationError("Logo must be a PNG")],
   ])("keeps name and message of %s but drops stack and cause", (name, original) => {
     (original as Error & { cause?: unknown }).cause = new Error("Failed query: select ...");
     const out = sanitizeError(original);

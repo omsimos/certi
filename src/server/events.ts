@@ -57,6 +57,12 @@ export async function getOwnedEvent(db: DB, ownerId: string, code: string): Prom
   return row;
 }
 
+// workerd freezes the clock between I/O, so a plain `new Date()` can equal the
+// previous value. updatedAt must strictly grow so caches keyed on it are invalidated.
+export function nextUpdatedAt(prev: Event): Date {
+  return new Date(Math.max(Date.now(), prev.updatedAt.getTime() + 1));
+}
+
 export async function updateEvent(
   db: DB,
   ownerId: string,
@@ -64,9 +70,7 @@ export async function updateEvent(
   input: EventUpdate,
 ): Promise<Event> {
   const prev = await getOwnedEvent(db, ownerId, code);
-  // workerd freezes the clock between I/O, so a plain `new Date()` can equal the
-  // previous value. updatedAt must strictly grow so caches keyed on it are invalidated.
-  const updatedAt = new Date(Math.max(Date.now(), prev.updatedAt.getTime() + 1));
+  const updatedAt = nextUpdatedAt(prev);
   const [row] = await db
     .update(event)
     .set({
