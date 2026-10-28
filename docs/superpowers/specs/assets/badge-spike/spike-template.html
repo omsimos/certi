@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Badge direction — live shader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#090a0c; color:#d9dce1; font-family:Geist,system-ui,sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:28px 16px 48px; }
+  h1 { font-weight:600; font-size:22px; margin:0 0 6px; }
+  p.sub { color:#8b9099; margin:0 0 22px; font-size:14px; line-height:1.5; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px; }
+  .opt { border:1px solid #22252b; border-radius:14px; padding:12px; cursor:pointer; transition:border-color .15s; }
+  .opt.selected { border-color:#9fb7ff; box-shadow:0 0 0 1px #9fb7ff; }
+  canvas { display:block; width:100%; aspect-ratio:300/430; touch-action:none; border-radius:10px; }
+  h3 { margin:10px 4px 4px; font-size:15px; font-weight:600; }
+  .opt p { margin:0 4px 4px; color:#8b9099; font-size:13px; line-height:1.45; }
+  #err { color:#ff9a9a; font-family:'Geist Mono',monospace; font-size:12px; white-space:pre-wrap; }
+</style></head><body><main>
+<h1>Badge directions, live shader</h1>
+<p class="sub">This is the real vgpu holographic shader, running here with plain WebGPU. Move your pointer or finger over a card to reveal the foil. Leave it alone for a few seconds and it plays a demo sweep, which is roughly what the animated export would look like. Click a card to pick it.</p>
+<div id="err"></div>
+<div class="grid">
+  <div class="opt" data-choice="a"><canvas data-mode="0"></canvas><h3>A · Close to vgpu</h3><p>Graphite, Geist, a triangle outline with a fractal engraving. Same look for every event.</p></div>
+  <div class="opt" data-choice="b"><canvas data-mode="1" data-accent="#6d3cff"></canvas><h3>B · Event-branded</h3><p>The organizer's logo and accent color go under the foil. Shown with a purple accent.</p></div>
+  <div class="opt" data-choice="c"><canvas data-mode="2"></canvas><h3>C · Conference ID</h3><p>No triangle. Foil engraving over the whole card, name centered, ID number, and a QR code to the card page.</p></div>
+</div>
+</main>
+<script type="module">
+const SHADER = __SHADER__;
+const W = 1024, H = 1456; // lettering mask spans the card exactly: 1.28 x 1.82 card units
+
+function mask(mode) {
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff';
+  const sans = (px, w = 600) => `${w} ${px}px Geist`;
+  const mono = (px) => `400 ${px}px "Geist Mono"`;
+  const track = (t) => t.split('').join(String.fromCharCode(8202));
+  if (mode === 0) {
+    g.font = sans(66); g.fillText('certi.', 72, 128);
+    g.font = mono(26); g.fillText(track('EDITION 001'), 74, 178);
+    g.font = mono(26); g.fillText(track('ATTENDEE'), 74, 1060);
+    g.font = sans(96); g.fillText('Juan', 70, 1160); g.fillText('Dela Cruz', 70, 1258);
+    g.font = mono(26); g.fillText(track('DEVFEST MANILA'), 74, 1380);
+    g.textAlign = 'right'; g.fillText(track('OCT 25 2026'), W - 74, 1380);
+  } else if (mode === 1) {
+    g.lineWidth = 6; g.strokeStyle = '#fff';
+    g.beginPath(); g.roundRect(72, 72, 150, 150, 34); g.stroke();
+    g.font = sans(54); g.textAlign = 'center'; g.fillText('GDG', 147, 166); g.textAlign = 'left';
+    g.font = sans(54); g.fillText('DevFest Manila', 254, 140);
+    g.font = mono(26); g.fillText(track('GOOGLE DEVELOPER GROUPS'), 256, 192);
+    g.font = sans(96); g.fillText('Juan', 70, 1160); g.fillText('Dela Cruz', 70, 1258);
+    g.font = mono(26); g.fillText(track('ATTENDEE · OCT 25 2026'), 74, 1380);
+  } else {
+    g.textAlign = 'center';
+    g.font = mono(28); g.fillText(track('DEVFEST MANILA 2026'), W / 2, 150);
+    g.font = sans(120); g.fillText('Juan', W / 2, 660); g.fillText('Dela Cruz', W / 2, 790);
+    g.textAlign = 'left';
+    g.font = mono(26); g.fillText(track('ATTENDEE'), 74, 1300); g.fillText(track('#A1B2C3'), 74, 1346);
+    // Fake QR: finder squares plus seeded modules.
+    const n = 25, s = 9, x0 = W - 74 - n * s, y0 = 1380 - n * s;
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const finder = [[0, 0], [n - 7, 0], [0, n - 7]].find(([fx, fy]) => x >= fx && x < fx + 7 && y >= fy && y < fy + 7);
+      const on = finder
+        ? Math.min(x - finder[0], 6 - (x - finder[0]), y - finder[1], 6 - (y - finder[1])) !== 1
+        : rnd() > 0.52;
+      if (on) g.fillRect(x0 + x * s, y0 + y * s, s, s);
+    }
+  }
+  const rgba = g.getImageData(0, 0, W, H).data, out = new Uint8Array(W * H);
+  for (let i = 0; i < out.length; i++) out[i] = rgba[i * 4 + 3];
+  return out;
+}
+
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+
+async function main() {
+  const err = document.getElementById('err');
+  if (!navigator.gpu) { err.textContent = 'This browser has no WebGPU. Try Chrome or Edge.'; return; }
+  const adapter = await navigator.gpu.requestAdapter();
+  if (!adapter) { err.textContent = 'No WebGPU adapter available.'; return; }
+  const device = await adapter.requestDevice();
+  await Promise.all([document.fonts.load('600 96px Geist'), document.fonts.load('400 26px "Geist Mono"')]);
+  const module = device.createShaderModule({ code: SHADER });
+  const info = await module.getCompilationInfo();
+  const errors = info.messages.filter((m) => m.type === 'error');
+  if (errors.length) { err.textContent = errors.map((m) => `${m.lineNum}:${m.linePos} ${m.message}`).join('\n'); return; }
+  const format = navigator.gpu.getPreferredCanvasFormat();
+  const pipeline = device.createRenderPipeline({ layout: 'auto',
+    vertex: { module, entryPoint: 'vs_main' },
+    fragment: { module, entryPoint: 'fs_main', targets: [{ format }] } });
+  const sampler = device.createSampler({ minFilter: 'linear', magFilter: 'linear' });
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+
+  const cards = [...document.querySelectorAll('canvas')].map((canvas) => {
+    const mode = +canvas.dataset.mode;
+    const accent = canvas.dataset.accent ? [...hex(canvas.dataset.accent), 1] : [0, 0, 0, 0];
+    const ctx = canvas.getContext('webgpu'); ctx.configure({ device, format, alphaMode: 'opaque' });
+    const tex = device.createTexture({ size: [W, H], format: 'r8unorm', usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST });
+    device.queue.writeTexture({ texture: tex }, mask(mode), { bytesPerRow: W }, [W, H]);
+    const ubo = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    const bind = device.createBindGroup({ layout: pipeline.getBindGroupLayout(0), entries: [
+      { binding: 0, resource: { buffer: ubo } }, { binding: 1, resource: tex.createView() }, { binding: 2, resource: sampler }] });
+    const st = { canvas, ctx, ubo, bind, mode, accent, px: 0, py: 0, targetHover: 0, tx: 0, ty: 0, hover: 0, lx: 0.2, ly: -0.25, last: -1e9 };
+    // Same mapping as vgpu's renderer.ts: pointer in card units, foil reveals on approach.
+    const move = (e) => {
+      if (!e.isPrimary) return;
+      const r = canvas.getBoundingClientRect(), scale = Math.min(r.height, r.width * 1.35);
+      st.px = ((e.clientX - r.left) - r.width / 2) / Math.max(1, scale) * 2.5 / 0.64;
+      st.py = ((e.clientY - r.top) - r.height / 2) / Math.max(1, scale) * 2.5 / 0.91;
+      const dx = Math.max(0, Math.abs(st.px) - 1) * scale * 0.64 / 2.5, dy = Math.max(0, Math.abs(st.py) - 1) * scale * 0.91 / 2.5;
+      const p = Math.max(0, 1 - Math.hypot(dx, dy) / (Math.max(1, scale) * 1.28 / 2.5));
+      st.targetHover = p * p * (3 - 2 * p); st.last = performance.now();
+    };
+    canvas.addEventListener('pointermove', move, { passive: true });
+    canvas.addEventListener('pointerdown', move, { passive: true });
+    canvas.addEventListener('pointerleave', () => { st.targetHover = 0; st.last = performance.now(); });
+    canvas.parentElement.addEventListener('click', () => {
+      document.querySelectorAll('.opt').forEach((o) => o.classList.toggle('selected', o === canvas.parentElement));
+      if (typeof window.toggleSelect === 'function') window.toggleSelect(canvas.parentElement);
+    });
+    return st;
+  });
+
+  let prev = performance.now();
+  const data = new Float32Array(12);
+  function frame(now) {
+    const dt = Math.min((now - prev) / 1000, 0.1); prev = now;
+    const blend = reduce.matches ? 1 : 1 - Math.exp(-10 * dt);
+    for (const st of cards) {
+      const dpr = Math.min(Math.max(devicePixelRatio, 1), 2);
+      const w = Math.round(st.canvas.clientWidth * dpr), h = Math.round(st.canvas.clientHeight * dpr);
+      if (st.canvas.width !== w || st.canvas.height !== h) { st.canvas.width = w; st.canvas.height = h; }
+      // Idle demo sweep: a stand-in for the animated export loop.
+      if (now - st.last > 2500 && !reduce.matches) {
+        const t = now / 1000 + st.mode * 1.7;
+        st.px = Math.sin(t * 0.8) * 0.85; st.py = Math.cos(t * 0.55) * 0.7; st.targetHover = 0.8;
+      }
+      const tx = reduce.matches ? 0 : Math.max(-1, Math.min(1, st.px)) * 0.16 * st.targetHover;
+      const ty = reduce.matches ? 0 : -Math.max(-1, Math.min(1, st.py)) * 0.12 * st.targetHover;
+      st.tx += (tx - st.tx) * blend; st.ty += (ty - st.ty) * blend; st.hover += (st.targetHover - st.hover) * blend;
+      if (st.targetHover > 0) { st.lx += (st.px - st.lx) * blend; st.ly += (st.py - st.ly) * blend; }
+      data.set([w, h, st.tx, st.ty, st.lx, st.ly, st.hover, st.mode, ...st.accent]);
+      device.queue.writeBuffer(st.ubo, 0, data);
+      const enc = device.createCommandEncoder();
+      const pass = enc.beginRenderPass({ colorAttachments: [{ view: st.ctx.getCurrentTexture().createView(), loadOp: 'clear', storeOp: 'store', clearValue: [0, 0, 0, 1] }] });
+      pass.setPipeline(pipeline); pass.setBindGroup(0, st.bind); pass.draw(3); pass.end();
+      device.queue.submit([enc.finish()]);
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+main().catch((e) => { document.getElementById('err').textContent = String(e?.stack || e); });
+</script></body></html>
