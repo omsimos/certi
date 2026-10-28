@@ -62,6 +62,8 @@ export function SendBadgesDialog({
   const [summary, setSummary] = useState<SendSummary | null>(null);
   const [renderFailures, setRenderFailures] = useState(0);
   const [refreshed, setRefreshed] = useState(0);
+  // Fixed when a run starts: the attendee list refreshes under the dialog as it goes.
+  const [ranRefreshOnly, setRanRefreshOnly] = useState(false);
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -85,6 +87,7 @@ export function SendBadgesDialog({
   async function start() {
     const controller = new AbortController();
     abort.current = controller;
+    setRanRefreshOnly(refreshOnly);
     try {
       if (toRender.length > 0) {
         setPhase("rendering");
@@ -139,7 +142,11 @@ export function SendBadgesDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{refreshOnly ? "Refresh badge images" : "Send badges"}</DialogTitle>
+          <DialogTitle>
+            {(phase === "choose" ? refreshOnly : ranRefreshOnly)
+              ? "Refresh badge images"
+              : "Send badges"}
+          </DialogTitle>
           {phase === "choose" && (
             <DialogDescription>
               {toSend.length > 0 &&
