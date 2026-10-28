@@ -8,7 +8,9 @@ export function commitOnChange<T extends ChangeTarget>(
 ): (el: T | null) => (() => void) | undefined {
   return (el) => {
     if (!el) return;
-    const handler = () => commit(el.value);
+    const handler = () => {
+      commit(el.value);
+    };
     el.addEventListener("change", handler);
     return () => el.removeEventListener("change", handler);
   };
