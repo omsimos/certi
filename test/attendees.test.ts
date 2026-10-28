@@ -117,13 +117,13 @@ describe("attendees", () => {
     expect(await listAttendees(db, a.id, ev2.code)).toHaveLength(2);
   });
 
-  async function scheduledAttendee() {
+  async function scheduledAttendee(emailScheduledFor = new Date(Date.now() + 86_400_000)) {
     const { a, ev } = await setup();
     await importAttendees(db, a.id, ev.code, two);
     const [first] = await listAttendees(db, a.id, ev.code);
     await db
       .update(attendee)
-      .set({ emailStatus: "scheduled", emailScheduledFor: new Date(), resendId: "re_123" })
+      .set({ emailStatus: "scheduled", emailScheduledFor, resendId: "re_123" })
       .where(eq(attendee.id, first.id));
     return { a, ev, id: first.id };
   }
@@ -145,6 +145,16 @@ describe("attendees", () => {
     expect(err).toBeInstanceOf(ScheduledEmailCancelError);
     expect((err as Error).message).toBe("Couldn't cancel the scheduled email. Try again.");
     expect((await listAttendees(db, a.id, ev.code)).map((r) => r.id)).toContain(id);
+  });
+
+  it("skips the cancel for a scheduled email whose time has passed", async () => {
+    const { a, ev, id } = await scheduledAttendee(new Date(Date.now() - 60_000));
+    const cancel = vi.fn(async () => {
+      throw new Error("Email already sent");
+    });
+    await deleteAttendee(db, a.id, ev.code, id, { cancel });
+    expect(cancel).not.toHaveBeenCalled();
+    expect((await listAttendees(db, a.id, ev.code)).map((r) => r.id)).not.toContain(id);
   });
 
   it("does not cancel anything for an attendee without a scheduled email", async () => {

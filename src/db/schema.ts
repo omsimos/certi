@@ -45,6 +45,8 @@ export const attendee = sqliteTable(
     emailScheduledFor: integer("email_scheduled_for", { mode: "timestamp_ms" }),
     emailSentAt: integer("email_sent_at", { mode: "timestamp_ms" }),
     emailError: text("email_error"),
+    // When a send claimed the row; a claim that never recorded a result goes stale.
+    emailClaimedAt: integer("email_claimed_at", { mode: "timestamp_ms" }),
     resendId: text("resend_id"),
     badgeImageKey: text("badge_image_key"),
     badgeImageVersion: integer("badge_image_version", { mode: "timestamp_ms" }),

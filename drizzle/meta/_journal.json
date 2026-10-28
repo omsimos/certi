@@ -15,6 +15,13 @@
       "when": 1793170588531,
       "tag": "0001_eager_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793173969786,
+      "tag": "0002_quiet_nico_minoru",
+      "breakpoints": true
     }
   ]
 }

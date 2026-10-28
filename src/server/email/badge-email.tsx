@@ -123,17 +123,53 @@ function BadgeEmail({ d, subject }: { d: BadgeEmailData; subject: string }) {
   );
 }
 
-export function renderBadgeEmail(d: BadgeEmailData): {
-  subject: string;
-  html: string;
-  text: string;
-} {
-  const subject = `Your badge for ${d.eventTitle}`;
-  const html = `<!doctype html>${renderToStaticMarkup(<BadgeEmail d={d} subject={subject} />)}`;
-  const text = [
+type RenderedEmail = { subject: string; html: string; text: string };
+
+const subjectOf = (d: BadgeEmailData) => `Your badge for ${d.eventTitle}`;
+const textOf = (d: BadgeEmailData) =>
+  [
     `Hi ${d.firstName}, here's your badge for ${d.eventTitle} (${d.organizer}).`,
     "",
     `View your badge: ${d.badgeUrl}`,
   ].join("\n");
-  return { subject, html, text };
+
+// The React render itself; used once to build the template, and by tests as the reference.
+export function renderBadgeEmailDirect(d: BadgeEmailData): RenderedEmail {
+  const subject = subjectOf(d);
+  const html = `<!doctype html>${renderToStaticMarkup(<BadgeEmail d={d} subject={subject} />)}`;
+  return { subject, html, text: textOf(d) };
+}
+
+const FIELDS = ["firstName", "eventTitle", "organizer", "badgeUrl", "imageUrl"] as const;
+// Plain word characters, so React's escaping leaves them untouched in text and attributes.
+const token = (field: string) => `__certi_${field}__`;
+const TOKEN_RE = new RegExp(FIELDS.map(token).join("|"), "g");
+const fieldOf = new Map<string, keyof BadgeEmailData>(FIELDS.map((f) => [token(f), f]));
+
+// The same entities React emits, so a substituted render equals a direct one.
+const ENTITIES: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#x27;",
+};
+const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ENTITIES[c]);
+
+let template: RenderedEmail | undefined;
+
+// Rendering React per attendee costs too much CPU for a Workers Free request, so the
+// markup is rendered once with tokens and each email only substitutes its values.
+// One pass, so a value that looks like a token is never substituted again.
+export function renderBadgeEmail(d: BadgeEmailData): RenderedEmail {
+  template ??= renderBadgeEmailDirect(
+    Object.fromEntries(FIELDS.map((f) => [f, token(f)])) as BadgeEmailData,
+  );
+  const fill = (s: string, escape: (v: string) => string) =>
+    s.replace(TOKEN_RE, (t) => escape(d[fieldOf.get(t)!]));
+  return {
+    subject: fill(template.subject, (v) => v),
+    html: fill(template.html, escapeHtml),
+    text: fill(template.text, (v) => v),
+  };
 }

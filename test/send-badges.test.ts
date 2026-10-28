@@ -13,7 +13,12 @@ import {
   type OutgoingEmail,
 } from "../src/server/email/client";
 import { readEmailConfig } from "../src/server/email/config";
-import { sendBadges, type SendDeps } from "../src/server/email/send-badges";
+import {
+  CLAIM_TIMEOUT_MS,
+  claimStatements,
+  sendBadges,
+  type SendDeps,
+} from "../src/server/email/send-badges";
 import { DAY_MS } from "../src/server/email/slots";
 import { createTestEvent, createTestUser } from "./helpers";
 
@@ -107,6 +112,8 @@ describe("sendBadges", () => {
       failed: 0,
       missingImage: 1,
       overflow: 0,
+      remaining: 0,
+      remainingIds: [],
     });
     expect(emailLog.batches).toHaveLength(2);
     expect(emailLog.batches[0].map((e) => e.scheduledAt)).toEqual([undefined, undefined]);
@@ -177,7 +184,15 @@ describe("sendBadges", () => {
     await sendBadges(deps(now), ownerId, ev.code);
     clearEmailLog();
     const again = await sendBadges(deps(now), ownerId, ev.code);
-    expect(again).toEqual({ sentNow: 0, scheduled: [], failed: 0, missingImage: 0, overflow: 0 });
+    expect(again).toEqual({
+      sentNow: 0,
+      scheduled: [],
+      failed: 0,
+      missingImage: 0,
+      overflow: 0,
+      remaining: 0,
+      remainingIds: [],
+    });
     expect(emailLog.batches).toEqual([]);
   });
 
@@ -212,7 +227,15 @@ describe("sendBadges", () => {
 
     const summary = await sendBadges(deps(now), ownerId, ev.code);
 
-    expect(summary).toEqual({ sentNow: 0, scheduled: [], failed: 0, missingImage: 3, overflow: 0 });
+    expect(summary).toEqual({
+      sentNow: 0,
+      scheduled: [],
+      failed: 0,
+      missingImage: 3,
+      overflow: 0,
+      remaining: 0,
+      remainingIds: [],
+    });
     expect(emailLog.batches).toEqual([]);
     expect((await rowsOf(ev)).every((r) => r.emailStatus === "not_sent")).toBe(true);
   });
@@ -227,7 +250,15 @@ describe("sendBadges", () => {
 
     const summary = await sendBadges(deps(now, { client: rejecting }), ownerId, ev.code);
 
-    expect(summary).toEqual({ sentNow: 0, scheduled: [], failed: 2, missingImage: 0, overflow: 0 });
+    expect(summary).toEqual({
+      sentNow: 0,
+      scheduled: [],
+      failed: 2,
+      missingImage: 0,
+      overflow: 0,
+      remaining: 0,
+      remainingIds: [],
+    });
     let rows = await rowsOf(ev);
     expect(rows.map((r) => [r.emailStatus, r.emailError, r.emailScheduledFor])).toEqual([
       ["failed", "quota", null],
@@ -324,7 +355,15 @@ describe("sendBadges", () => {
 
     const summary = await sendBadges(deps(now, { dailyLimit: 1, client }), ownerId, ev.code);
 
-    expect(summary).toEqual({ sentNow: 1, scheduled: [], failed: 0, missingImage: 0, overflow: 2 });
+    expect(summary).toEqual({
+      sentNow: 1,
+      scheduled: [],
+      failed: 0,
+      missingImage: 0,
+      overflow: 2,
+      remaining: 0,
+      remainingIds: [],
+    });
     expect(calls.batches).toBe(2);
     expect((await rowsOf(ev)).map((r) => [r.emailStatus, r.emailScheduledFor])).toEqual([
       ["sent", null],
@@ -333,27 +372,160 @@ describe("sendBadges", () => {
     ]);
   });
 
+  it("handles one batch per call and reports the rest as remaining", async () => {
+    const now = tick();
+    const { ownerId, ev, emails } = await seed({ images: 150 });
+    const d = deps(now, { dailyLimit: 1000 });
+
+    const first = await sendBadges(d, ownerId, ev.code);
+    expect(first).toMatchObject({ sentNow: 100, remaining: 50, remainingIds: [], overflow: 0 });
+    const second = await sendBadges(d, ownerId, ev.code);
+    expect(second).toMatchObject({ sentNow: 50, remaining: 0, overflow: 0 });
+
+    expect(emailLog.batches.map((b) => b.length)).toEqual([100, 50]);
+    expect(loggedRecipients().sort()).toEqual(emails.sort());
+  });
+
+  it("returns the unsent ids of an explicit send so the next call skips the sent ones", async () => {
+    const now = tick();
+    const { ownerId, ev, ids, emails } = await seed({ images: 120 });
+    const d = deps(now, { dailyLimit: 1000 });
+
+    const first = await sendBadges(d, ownerId, ev.code, { attendeeIds: ids });
+    expect(first.sentNow).toBe(100);
+    expect(first.remaining).toBe(20);
+    expect(first.remainingIds).toEqual(ids.slice(100));
+    const second = await sendBadges(d, ownerId, ev.code, { attendeeIds: first.remainingIds });
+    expect(second).toMatchObject({ sentNow: 20, remaining: 0, remainingIds: [] });
+
+    expect(loggedRecipients().sort()).toEqual(emails.sort());
+  });
+
   it("makes at most 20 Resend calls per request", async () => {
     const now = tick();
-    const other = await seed({ images: 40 });
-    await db
-      .update(attendee)
-      .set({ emailStatus: "sent", emailSentAt: new Date(now.getTime() - 3_600_000) })
-      .where(eq(attendee.eventId, other.ev.id));
-    const mine = await seed({ images: 2001 });
+    const { ownerId, ev } = await seed({ images: 40 });
     const { client, calls } = countingClient(createEmailClient({ mode: "log" }));
 
-    const summary = await sendBadges(deps(now, { client }), mine.ownerId, mine.ev.code);
+    // One email a day: 30 one-email slots fit the horizon, but only 20 calls are allowed.
+    const summary = await sendBadges(deps(now, { client, dailyLimit: 1 }), ownerId, ev.code);
 
     expect(calls.batches).toBe(20);
-    expect(summary.sentNow).toBe(60);
+    expect(summary.sentNow).toBe(1);
     expect(summary.scheduled).toHaveLength(19);
-    expect(summary.scheduled.every((s) => s.count === 100)).toBe(true);
-    expect(summary.overflow).toBe(41);
-    expect(emailLog.batches.every((b) => b.length <= 100)).toBe(true);
-    const rows = await rowsOf(mine.ev);
-    expect(rows.filter((r) => r.emailStatus === "not_sent")).toHaveLength(41);
+    expect(summary.remaining).toBe(10);
+    expect(summary.overflow).toBe(10);
   });
+
+  it("counts the cancels of a resend against the call budget", async () => {
+    const now = tick();
+    const { ownerId, ev, ids } = await seed({ images: 30 });
+    await db
+      .update(attendee)
+      .set({
+        emailStatus: "scheduled",
+        emailScheduledFor: new Date(now.getTime() + 5 * DAY_MS),
+        resendId: "re_old",
+      })
+      .where(eq(attendee.eventId, ev.id));
+    const { client, calls } = countingClient(createEmailClient({ mode: "log" }));
+
+    const summary = await sendBadges(deps(now, { client, dailyLimit: 1000 }), ownerId, ev.code, {
+      attendeeIds: ids,
+    });
+
+    expect(calls).toEqual({ batches: 1, cancels: 19 });
+    expect(summary.sentNow).toBe(19);
+    expect(summary.remainingIds).toEqual(ids.slice(19));
+  });
+
+  it("reports nothing as remaining when every email in the call failed", async () => {
+    const now = tick();
+    const { ownerId, ev } = await seed({ images: 120 });
+    const rejecting: EmailClient = {
+      sendBatch: async (emails) => emails.map(() => ({ ok: false, error: "quota" })),
+      cancel: async () => {},
+    };
+
+    const summary = await sendBadges(deps(now, { client: rejecting }), ownerId, ev.code);
+
+    expect(summary).toMatchObject({ failed: 100, remaining: 0, overflow: 20 });
+  });
+
+  it("retries a claim that never recorded a result once it is stale", async () => {
+    const now = tick();
+    const { ownerId, ev, ids, emails } = await seed({ images: 2 });
+    await db
+      .update(attendee)
+      .set({
+        emailStatus: "scheduled",
+        emailScheduledFor: now,
+        emailClaimedAt: new Date(now.getTime() - CLAIM_TIMEOUT_MS - 1),
+      })
+      .where(eq(attendee.id, ids[0]));
+    await db
+      .update(attendee)
+      .set({ emailStatus: "scheduled", emailScheduledFor: now, emailClaimedAt: now })
+      .where(eq(attendee.id, ids[1]));
+
+    const bulk = await sendBadges(deps(now, { dailyLimit: 1000 }), ownerId, ev.code);
+    expect(bulk.sentNow).toBe(1);
+    expect(loggedRecipients()).toEqual([emails[0]]);
+
+    // A fresh claim may still be in another request's hands, even for an explicit resend.
+    const explicit = await sendBadges(deps(now, { dailyLimit: 1000 }), ownerId, ev.code, {
+      attendeeIds: [ids[1]],
+    });
+    expect(explicit.sentNow).toBe(0);
+    expect(loggedRecipients()).toEqual([emails[0]]);
+
+    const later = new Date(now.getTime() + CLAIM_TIMEOUT_MS + 1);
+    const retried = await sendBadges(deps(later, { dailyLimit: 1000 }), ownerId, ev.code, {
+      attendeeIds: [ids[1]],
+    });
+    expect(retried.sentNow).toBe(1);
+    const rows = await rowsOf(ev);
+    expect(rows.map((r) => [r.emailStatus, r.emailClaimedAt])).toEqual([
+      ["sent", now],
+      ["sent", later],
+    ]);
+  });
+
+  it("resends a past-dated scheduled email without trying to cancel it", async () => {
+    const now = tick();
+    const { ownerId, ev, ids, emails } = await seed({ images: 1 });
+    await db
+      .update(attendee)
+      .set({
+        emailStatus: "scheduled",
+        emailScheduledFor: new Date(now.getTime() - 3_600_000),
+        resendId: "re_gone",
+      })
+      .where(eq(attendee.id, ids[0]));
+    const log = createEmailClient({ mode: "log" });
+    const client: EmailClient = {
+      sendBatch: log.sendBatch,
+      cancel: async () => {
+        throw new Error("Email already sent");
+      },
+    };
+
+    const summary = await sendBadges(deps(now, { client, dailyLimit: 1000 }), ownerId, ev.code, {
+      attendeeIds: ids,
+    });
+
+    expect(summary).toMatchObject({ sentNow: 1, failed: 0 });
+    expect(loggedRecipients()).toEqual(emails);
+    expect((await rowsOf(ev))[0].resendId).not.toBe("re_gone");
+  });
+
+  it.each([false, true])(
+    "keeps a 90-id claim under D1's 100 parameters (explicit %s)",
+    (explicit) => {
+      const ids = Array.from({ length: 90 }, (_, i) => `id${i}`);
+      const [statement] = claimStatements(db, ids, new Date(), new Date(), explicit);
+      expect(statement.toSQL().params.length).toBeLessThanOrEqual(100);
+    },
+  );
 
   it("forbids another owner", async () => {
     const { ev } = await seed({ images: 1 });

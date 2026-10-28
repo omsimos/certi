@@ -1,7 +1,8 @@
-import { and, asc, eq, gt, inArray, isNotNull, ne, or } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 
 import type { DB } from "@/db";
-import { attendee, type Event } from "@/db/schema";
+import { attendee, type EmailStatus, type Event } from "@/db/schema";
+import { effectiveEmailStatus } from "@/lib/email-status";
 import { renderBadgeEmail } from "@/server/email/badge-email";
 import type { EmailClient, OutgoingEmail, SendResult } from "@/server/email/client";
 import { DAY_MS, planSendSlots } from "@/server/email/slots";
@@ -11,6 +12,11 @@ import { getOwnedEvent } from "@/server/events";
 export const MAX_RESEND_CALLS_PER_REQUEST = 20;
 // Resend's batch endpoint takes at most 100 emails.
 export const BATCH_SIZE = 100;
+// Workers Free allows 10 ms of CPU per request, so one call handles one batch's worth
+// and reports the rest as `remaining` for the caller to send with another call.
+export const MAX_EMAILS_PER_REQUEST = 100;
+// A claim this old never recorded its result (the request died), so it may be retried.
+export const CLAIM_TIMEOUT_MS = 10 * 60_000;
 // 90 ids + the SET and status params stay under D1's 100 bound parameters per statement.
 const IDS_PER_STATEMENT = 90;
 
@@ -28,26 +34,36 @@ export type SendSummary = {
   scheduled: { at: string; count: number }[];
   failed: number;
   missingImage: number;
+  // Not attempted: beyond the 30-day horizon, or retrying now wouldn't help.
   overflow: number;
+  // Left for another call because of the per-request cap.
+  remaining: number;
+  // For an explicit send, the ids to pass to that call; resending all of them would
+  // email the ones this call already sent again.
+  remainingIds: string[];
 };
 
 type Candidate = {
   id: string;
   firstName: string;
   email: string;
-  emailStatus: string;
+  emailStatus: EmailStatus;
+  emailScheduledFor: Date | null;
+  emailClaimedAt: Date | null;
   resendId: string | null;
   badgeImageKey: string | null;
   badgeImageVersion: Date | null;
 };
 
-type Batch = { slot: number; at: Date; rows: Candidate[] };
+type Batch = { at: Date; rows: Candidate[] };
 
 const candidateColumns = {
   id: attendee.id,
   firstName: attendee.firstName,
   email: attendee.email,
   emailStatus: attendee.emailStatus,
+  emailScheduledFor: attendee.emailScheduledFor,
+  emailClaimedAt: attendee.emailClaimedAt,
   resendId: attendee.resendId,
   badgeImageKey: attendee.badgeImageKey,
   badgeImageVersion: attendee.badgeImageVersion,
@@ -64,20 +80,57 @@ async function sha256Hex(input: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// A claimed row is `scheduled` with no resendId until its send is recorded.
-const isInFlight = (r: Candidate) => r.emailStatus === "scheduled" && !r.resendId;
-const needsCancel = (r: Candidate, explicit: boolean) =>
-  explicit && r.emailStatus === "scheduled" && !!r.resendId;
+const claimCutoff = (now: Date) => new Date(now.getTime() - CLAIM_TIMEOUT_MS);
 
-async function loadCandidates(db: DB, ev: Event, attendeeIds?: string[]): Promise<Candidate[]> {
-  const order = [asc(attendee.createdAt), asc(attendee.id)];
+// A claimed row is `scheduled` with no resendId until its send is recorded. While the
+// claim is fresh another request may still be sending it, so nobody else may take it.
+const isFreshClaim = (r: Candidate, now: Date) =>
+  r.emailStatus === "scheduled" &&
+  !r.resendId &&
+  !!r.emailClaimedAt &&
+  r.emailClaimedAt.getTime() >= claimCutoff(now).getTime();
+
+const staleClaim = (now: Date) =>
+  and(
+    eq(attendee.emailStatus, "scheduled"),
+    isNull(attendee.resendId),
+    or(isNull(attendee.emailClaimedAt), lt(attendee.emailClaimedAt, claimCutoff(now))),
+  );
+
+// Rows a bulk send picks up: never sent, failed, or a claim that died.
+const bulkSendable = (now: Date) =>
+  or(inArray(attendee.emailStatus, ["not_sent", "failed"]), staleClaim(now));
+
+// An explicit resend takes any row except one another request is still sending.
+const explicitSendable = (now: Date) =>
+  or(
+    ne(attendee.emailStatus, "scheduled"),
+    isNotNull(attendee.resendId),
+    isNull(attendee.emailClaimedAt),
+    lt(attendee.emailClaimedAt, claimCutoff(now)),
+  );
+
+// A past-dated schedule has gone out and Resend would refuse the cancel.
+const needsCancel = (r: Candidate, explicit: boolean, now: Date) =>
+  explicit && !!r.resendId && effectiveEmailStatus(r, now) === "scheduled";
+
+async function loadCandidates(
+  db: DB,
+  ev: Event,
+  now: Date,
+  attendeeIds?: string[],
+): Promise<Candidate[]> {
+  // Failed rows go last so a run of repeated calls reaches every unsent row first.
+  const order = [
+    sql`${attendee.emailStatus} = 'failed'`,
+    asc(attendee.createdAt),
+    asc(attendee.id),
+  ];
   if (!attendeeIds) {
     return db
       .select(candidateColumns)
       .from(attendee)
-      .where(
-        and(eq(attendee.eventId, ev.id), inArray(attendee.emailStatus, ["not_sent", "failed"])),
-      )
+      .where(and(eq(attendee.eventId, ev.id), bulkSendable(now)))
       .orderBy(...order);
   }
   // Filtered in memory: up to 2000 ids would blow D1's bound-parameter limit.
@@ -87,7 +140,7 @@ async function loadCandidates(db: DB, ev: Event, attendeeIds?: string[]): Promis
     .from(attendee)
     .where(eq(attendee.eventId, ev.id))
     .orderBy(...order);
-  return rows.filter((r) => wanted.has(r.id) && !isInFlight(r));
+  return rows.filter((r) => wanted.has(r.id) && !isFreshClaim(r, now));
 }
 
 // The quota is per Resend account, so every event's sends and schedules count.
@@ -109,31 +162,49 @@ async function loadCommitments(db: DB, now: Date): Promise<Date[]> {
   return rows.map((r) => (r.status === "sent" ? r.sentAt! : r.scheduledFor!));
 }
 
-// The conditional UPDATE is what stops a double click or a second tab from emailing
-// anyone twice: only the request whose UPDATE flips the row gets it back.
-async function claim(db: DB, ids: string[], at: Date, explicit: boolean): Promise<Set<string>> {
-  if (ids.length === 0) return new Set();
-  const allowed = explicit
-    ? or(ne(attendee.emailStatus, "scheduled"), isNotNull(attendee.resendId))
-    : inArray(attendee.emailStatus, ["not_sent", "failed"]);
-  const statements = chunk(ids, IDS_PER_STATEMENT).map((part) =>
+export function claimStatements(db: DB, ids: string[], at: Date, now: Date, explicit: boolean) {
+  return chunk(ids, IDS_PER_STATEMENT).map((part) =>
     db
       .update(attendee)
-      .set({ emailStatus: "scheduled", emailScheduledFor: at, resendId: null, emailError: null })
-      .where(and(inArray(attendee.id, part), allowed))
+      .set({
+        emailStatus: "scheduled",
+        emailScheduledFor: at,
+        emailClaimedAt: now,
+        resendId: null,
+        emailError: null,
+      })
+      .where(and(inArray(attendee.id, part), explicit ? explicitSendable(now) : bulkSendable(now)))
       .returning({ id: attendee.id }),
   );
+}
+
+// The conditional UPDATE is what stops a double click or a second tab from emailing
+// anyone twice: only the request whose UPDATE flips the row gets it back.
+async function claim(
+  db: DB,
+  ids: string[],
+  at: Date,
+  now: Date,
+  explicit: boolean,
+): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+  const statements = claimStatements(db, ids, at, now, explicit);
   const results = await db.batch(statements as [(typeof statements)[number]]);
   return new Set(results.flat().map((r) => r.id));
 }
 
 // Keeps the longest prefix whose Resend calls (one batch + one cancel per scheduled
 // resend) fit the remaining budget.
-function affordablePrefix(rows: Candidate[], budget: number, explicit: boolean): Candidate[] {
+function affordablePrefix(
+  rows: Candidate[],
+  budget: number,
+  explicit: boolean,
+  now: Date,
+): Candidate[] {
   let cost = 1;
   let n = 0;
   for (const r of rows) {
-    const next = cost + (needsCancel(r, explicit) ? 1 : 0);
+    const next = cost + (needsCancel(r, explicit, now) ? 1 : 0);
     if (next > budget) break;
     cost = next;
     n++;
@@ -165,16 +236,14 @@ export async function sendBadges(
   const ev = await getOwnedEvent(db, ownerId, code);
   const explicit = opts.attendeeIds !== undefined;
 
-  const candidates = await loadCandidates(db, ev, opts.attendeeIds);
+  const candidates = await loadCandidates(db, ev, now, opts.attendeeIds);
   // An image rendered before the last event edit shows stale details.
   const ready = candidates.filter(
     (r) => r.badgeImageKey && r.badgeImageVersion?.getTime() === ev.updatedAt.getTime(),
   );
 
-  const maxPlanned = MAX_RESEND_CALLS_PER_REQUEST * BATCH_SIZE;
-  const count = Math.min(ready.length, maxPlanned);
   const plan = planSendSlots({
-    count,
+    count: ready.length,
     now,
     dailyLimit: deps.dailyLimit,
     commitments: await loadCommitments(db, now),
@@ -185,31 +254,64 @@ export async function sendBadges(
     scheduled: [],
     failed: 0,
     missingImage: candidates.length - ready.length,
-    overflow: ready.length - count + plan.overflow,
+    overflow: plan.overflow,
+    remaining: 0,
+    remainingIds: [],
   };
 
+  // Slot order, so this call takes the earliest rows and later calls continue from there.
   const batches: Batch[] = [];
+  const deferred: Candidate[] = [];
   let offset = 0;
-  plan.slots.forEach((slot, i) => {
+  let taken = 0;
+  for (const slot of plan.slots) {
     const rows = ready.slice(offset, (offset += slot.size));
-    for (const part of chunk(rows, BATCH_SIZE)) batches.push({ slot: i, at: slot.at, rows: part });
-  });
+    const take = Math.max(0, Math.min(rows.length, MAX_EMAILS_PER_REQUEST - taken));
+    taken += take;
+    deferred.push(...rows.slice(take));
+    for (const part of chunk(rows.slice(0, take), BATCH_SIZE)) {
+      batches.push({ at: slot.at, rows: part });
+    }
+  }
 
   const scheduledPerSlot = new Map<number, number>();
   let budget = MAX_RESEND_CALLS_PER_REQUEST;
-  let stopped = false;
+  let accepted = 0;
+  let schedulingRejected = false;
 
   for (const batch of batches) {
-    const rows = stopped ? [] : affordablePrefix(batch.rows, budget, explicit);
-    summary.overflow += batch.rows.length - rows.length;
-    if (rows.length === 0) {
-      stopped = true;
+    if (schedulingRejected) {
+      summary.overflow += batch.rows.length;
       continue;
     }
+    const rows = affordablePrefix(batch.rows, budget, explicit, now);
+    deferred.push(...batch.rows.slice(rows.length));
+    if (rows.length === 0) continue;
+
+    // Today may be full, so the first planned slot can already be a later day.
+    const later = batch.at.getTime() !== now.getTime();
+    // Rendered before the claim, so a request killed while rendering holds no rows.
+    const emails = new Map(
+      rows.map((r): [string, OutgoingEmail] => [
+        r.id,
+        {
+          from: deps.from,
+          to: r.email,
+          ...renderBadgeEmail({
+            firstName: r.firstName,
+            eventTitle: ev.title,
+            organizer: ev.organizer,
+            badgeUrl: `${deps.origin}/event/${ev.code}/badge/${r.id}`,
+            imageUrl: `${deps.origin}/api/badge/${ev.code}/${r.id}?v=${r.badgeImageVersion!.getTime()}`,
+          }),
+          ...(later ? { scheduledAt: batch.at.toISOString() } : {}),
+        },
+      ]),
+    );
 
     const toClaim: Candidate[] = [];
     for (const r of rows) {
-      if (!needsCancel(r, explicit)) {
+      if (!needsCancel(r, explicit, now)) {
         toClaim.push(r);
         continue;
       }
@@ -227,32 +329,20 @@ export async function sendBadges(
       db,
       toClaim.map((r) => r.id),
       batch.at,
+      now,
       explicit,
     );
     const claimed = toClaim.filter((r) => claimedIds.has(r.id));
     if (claimed.length === 0) continue;
 
-    // Today may be full, so the first planned slot can already be a later day.
-    const later = batch.at.getTime() !== now.getTime();
-    const emails = claimed.map((r): OutgoingEmail => {
-      const content = renderBadgeEmail({
-        firstName: r.firstName,
-        eventTitle: ev.title,
-        organizer: ev.organizer,
-        badgeUrl: `${deps.origin}/event/${ev.code}/badge/${r.id}`,
-        imageUrl: `${deps.origin}/api/badge/${ev.code}/${r.id}?v=${r.badgeImageVersion!.getTime()}`,
-      });
-      return {
-        from: deps.from,
-        to: r.email,
-        ...content,
-        ...(later ? { scheduledAt: batch.at.toISOString() } : {}),
-      };
-    });
     const ids = claimed.map((r) => r.id);
     const key = await sha256Hex(`${ev.id}|${batch.at.getTime()}|${ids.join(",")}`);
     budget--;
-    const results = await sendSafely(client, emails, key);
+    const results = await sendSafely(
+      client,
+      claimed.map((r) => emails.get(r.id)!),
+      key,
+    );
 
     // P5: if Resend won't schedule, send only today's share and leave the rest unsent.
     if (later && results.every((r) => !r.ok && r.error.includes("scheduled_at"))) {
@@ -264,7 +354,7 @@ export async function sendBadges(
       );
       await db.batch(revert as [(typeof revert)[number]]);
       summary.overflow += ids.length;
-      stopped = true;
+      schedulingRejected = true;
       continue;
     }
 
@@ -282,6 +372,7 @@ export async function sendBadges(
           })
           .where(where);
       }
+      accepted++;
       if (!later) {
         summary.sentNow++;
         return db
@@ -294,15 +385,25 @@ export async function sendBadges(
           })
           .where(where);
       }
-      scheduledPerSlot.set(batch.slot, (scheduledPerSlot.get(batch.slot) ?? 0) + 1);
+      const t = batch.at.getTime();
+      scheduledPerSlot.set(t, (scheduledPerSlot.get(t) ?? 0) + 1);
       return db.update(attendee).set({ resendId: result.id }).where(where);
     });
     await db.batch(updates as [(typeof updates)[number]]);
   }
 
-  summary.scheduled = [...scheduledPerSlot].map(([slot, n]) => ({
-    at: plan.slots[slot].at.toISOString(),
-    count: n,
+  // Another call only helps if this one got something through; otherwise a caller
+  // looping on `remaining` would retry the same failing rows forever.
+  if (schedulingRejected || accepted === 0) {
+    summary.overflow += deferred.length;
+  } else {
+    summary.remaining = deferred.length;
+    if (explicit) summary.remainingIds = deferred.map((r) => r.id);
+  }
+
+  summary.scheduled = [...scheduledPerSlot].map(([t, count]) => ({
+    at: new Date(t).toISOString(),
+    count,
   }));
   return summary;
 }

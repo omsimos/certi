@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 
 import type { DB } from "@/db";
 import { attendee, event, type Attendee, type Event } from "@/db/schema";
+import { effectiveEmailStatus } from "@/lib/email-status";
 import { NotFoundError, ScheduledEmailCancelError } from "@/lib/errors";
 import type { AttendeeInput } from "@/lib/schemas";
 import { getOwnedEvent } from "@/server/events";
@@ -56,20 +57,26 @@ export async function deleteAttendee(
   ownerId: string,
   code: string,
   attendeeId: string,
-  opts: { cancel?: (resendId: string) => Promise<void> } = {},
+  opts: { cancel?: (resendId: string) => Promise<void>; now?: Date } = {},
 ): Promise<void> {
   const ev = await getOwnedEvent(db, ownerId, code);
   // Scoped to the owned event so a mismatched (code, id) pair can't touch another event.
   const scope = and(eq(attendee.id, attendeeId), eq(attendee.eventId, ev.id));
   const [row] = await db
-    .select({ emailStatus: attendee.emailStatus, resendId: attendee.resendId })
+    .select({
+      emailStatus: attendee.emailStatus,
+      emailScheduledFor: attendee.emailScheduledFor,
+      resendId: attendee.resendId,
+    })
     .from(attendee)
     .where(scope)
     .limit(1);
   if (!row) throw new NotFoundError("Attendee not found");
 
-  // Otherwise the deleted attendee still gets an email whose link 404s.
-  if (row.emailStatus === "scheduled" && row.resendId && opts.cancel) {
+  // Otherwise the deleted attendee still gets an email whose link 404s. A past-dated
+  // one has already gone out, and Resend would refuse the cancel.
+  const status = effectiveEmailStatus(row, opts.now ?? new Date());
+  if (status === "scheduled" && row.resendId && opts.cancel) {
     try {
       await opts.cancel(row.resendId);
     } catch (err) {

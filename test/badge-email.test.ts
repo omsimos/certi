@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderBadgeEmail } from "../src/server/email/badge-email";
+import { renderBadgeEmail, renderBadgeEmailDirect } from "../src/server/email/badge-email";
 
 const data = {
   firstName: "Ana",
@@ -40,5 +40,17 @@ describe("renderBadgeEmail", () => {
     const { text } = renderBadgeEmail(data);
     expect(text).toContain(data.badgeUrl);
     expect(text).toContain("DevFest Manila");
+  });
+
+  it("matches a direct React render for hostile values", () => {
+    const hostile = {
+      firstName: `<img src=x onerror="alert('1')"> & __certi_eventTitle__`,
+      eventTitle: `"Quotes" & 'apostrophes' <b>bold</b> $& $1`,
+      organizer: "王小明 & محمد <Org>",
+      badgeUrl: "https://certi.example/event/a&b/badge/x'y\"z",
+      imageUrl: "https://certi.example/api/badge/a/b?v=1&x=<y>",
+    };
+    expect(renderBadgeEmail(hostile)).toEqual(renderBadgeEmailDirect(hostile));
+    expect(renderBadgeEmail(data)).toEqual(renderBadgeEmailDirect(data));
   });
 });
