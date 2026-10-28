@@ -161,7 +161,8 @@ export function HoloBadge({
     hover: 0,
     lx: 0.2,
     ly: -0.25,
-    last: 0,
+    // No input yet, so the idle sweep plays from mount and keeps phones alive before a touch.
+    last: -Infinity,
   });
 
   useEffect(() => {
@@ -200,8 +201,6 @@ export function HoloBadge({
     let raf = 0;
     let stopped = false;
     let prev = performance.now();
-    // The idle sweep starts only after IDLE_MS without input, counted from mount.
-    motion.current.last = prev;
 
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
@@ -285,16 +284,22 @@ export function HoloBadge({
     return () => observer.disconnect();
   }, [backend, lettering, accent]);
 
-  useImperativeHandle(
-    ref,
-    () => ({
+  useImperativeHandle(ref, () => {
+    // What the viewer sees right now, so a still export matches the live card.
+    const livePose = (): Pose => {
+      if (backend === "flat" || !props.current.interactive) return STILL_POSE;
+      const m = motion.current;
+      return { tilt: [m.tx, m.ty], pointer: [m.lx, m.ly], hover: m.hover };
+    };
+    return {
       backend,
-      async renderStill({ width, height, type, quality, pose = STILL_POSE }) {
+      async renderStill({ width, height, type, quality, pose }) {
+        const still = pose ?? livePose();
         const l = await letteringPromise.current;
         if (!l) throw new Error("The badge isn't ready yet");
         const painter = await exportPainter(backend, l, props.current.accent, width, height);
         try {
-          painter.paint(pose);
+          painter.paint(still);
           return await painter.out.convertToBlob({ type, quality });
         } finally {
           painter.dispose();
@@ -314,9 +319,8 @@ export function HoloBadge({
           painter.dispose();
         }
       },
-    }),
-    [backend],
-  );
+    };
+  }, [backend]);
 
   const flat = backend === "flat";
 
