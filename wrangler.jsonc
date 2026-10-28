@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "certi",
+  "compatibility_date": "2026-10-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+  "observability": {
+    "enabled": true,
+  },
+  "upload_source_maps": true,
+  // Secrets RESEND_API_KEY and RESEND_FROM are set with `wrangler secret put`.
+  "vars": {
+    "EMAIL_MODE": "resend",
+    "RESEND_DAILY_LIMIT": "100",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "certi",
+      "database_id": "local",
+      "migrations_dir": "drizzle",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "certi-certs",
+    },
+  ],
+}

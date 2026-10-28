@@ -1,0 +1,163 @@
+import { describe, expect, it } from "vitest";
+
+import { mergeSummaries, planSendWork, summarizeEmails } from "../src/lib/email-summary";
+
+const now = new Date(2026, 9, 28, 9, 0);
+const updatedAt = new Date(2026, 9, 20);
+const v = updatedAt;
+
+type Row = Parameters<typeof summarizeEmails>[0][number];
+const row = (o: Partial<Row>): Row => ({
+  emailStatus: "not_sent",
+  emailScheduledFor: null,
+  emailClaimedAt: null,
+  resendId: null,
+  badgeImageVersion: null,
+  ...o,
+});
+
+describe("summarizeEmails", () => {
+  it("counts each status", () => {
+    const s = summarizeEmails(
+      [
+        row({ emailStatus: "sent" }),
+        row({ emailStatus: "sent" }),
+        row({ emailStatus: "not_sent" }),
+        row({ emailStatus: "failed" }),
+      ],
+      updatedAt,
+      now,
+    );
+    expect(s).toMatchObject({ sent: 2, notSent: 1, failed: 1, scheduled: [] });
+  });
+
+  it("groups scheduled rows by local date, in order", () => {
+    const at = (d: number, h: number) => new Date(2026, 9, d, h, 30);
+    const s = summarizeEmails(
+      [
+        row({ emailStatus: "scheduled", emailScheduledFor: at(30, 9), resendId: "a" }),
+        row({ emailStatus: "scheduled", emailScheduledFor: at(29, 23), resendId: "b" }),
+        row({ emailStatus: "scheduled", emailScheduledFor: at(30, 1), resendId: "c" }),
+      ],
+      updatedAt,
+      now,
+    );
+    expect(s.scheduled).toEqual([
+      { date: "2026-10-29", count: 1 },
+      { date: "2026-10-30", count: 2 },
+    ]);
+  });
+
+  it("counts a scheduled row whose time has passed as sent", () => {
+    const s = summarizeEmails(
+      [row({ emailStatus: "scheduled", emailScheduledFor: new Date(2026, 9, 27), resendId: "a" })],
+      updatedAt,
+      now,
+    );
+    expect(s).toMatchObject({ sent: 1, scheduled: [] });
+  });
+
+  it("counts a stale claim as not sent and a fresh one as scheduled", () => {
+    const claim = { emailStatus: "scheduled" as const, emailScheduledFor: now, resendId: null };
+    const s = summarizeEmails(
+      [
+        row({ ...claim, emailClaimedAt: new Date(now.getTime() - 11 * 60_000) }),
+        row({ ...claim, emailClaimedAt: now }),
+      ],
+      updatedAt,
+      now,
+    );
+    expect(s).toMatchObject({ notSent: 1, needsImage: 1, scheduled: [{ count: 1 }] });
+  });
+
+  it("needsImage counts missing and stale images of rows to send, not sent rows", () => {
+    const s = summarizeEmails(
+      [
+        row({}),
+        row({ emailStatus: "failed", badgeImageVersion: new Date(1) }),
+        row({ badgeImageVersion: v }),
+        row({ emailStatus: "sent" }),
+        row({ emailStatus: "scheduled", emailScheduledFor: new Date(2026, 9, 30), resendId: "a" }),
+      ],
+      updatedAt,
+      now,
+    );
+    expect(s.needsImage).toBe(2);
+  });
+});
+
+describe("staleScheduled", () => {
+  const future = new Date(2026, 9, 30);
+  const scheduled = (o: Partial<Row>) =>
+    row({ emailStatus: "scheduled", emailScheduledFor: future, resendId: "a", ...o });
+  const rows = [
+    scheduled({ badgeImageVersion: new Date(1) }),
+    scheduled({ badgeImageVersion: v }),
+    row({ emailStatus: "sent", badgeImageVersion: new Date(1) }),
+    // Past-dated: already went out, so its image can't change anything.
+    scheduled({ emailScheduledFor: new Date(2026, 9, 27), badgeImageVersion: new Date(1) }),
+  ];
+
+  it("summarizeEmails counts scheduled emails with an outdated image", () => {
+    const s = summarizeEmails(rows, updatedAt, now);
+    expect(s).toMatchObject({ staleScheduled: 1, notSent: 0, failed: 0, needsImage: 0 });
+  });
+
+  it("planSendWork re-renders them without sending to them", () => {
+    const toSend = row({});
+    const work = planSendWork([...rows, toSend], updatedAt, now);
+    expect(work.toSend).toEqual([toSend]);
+    expect(work.staleScheduled).toEqual([rows[0]]);
+    expect(work.toRender).toEqual([toSend, rows[0]]);
+  });
+
+  it("planSendWork skips current images of rows to send", () => {
+    const current = row({ badgeImageVersion: v });
+    expect(planSendWork([current], updatedAt, now)).toEqual({
+      toSend: [current],
+      staleScheduled: [],
+      toRender: [],
+    });
+  });
+});
+
+describe("mergeSummaries", () => {
+  it("adds sends, merges slots by time and does not double count repeats", () => {
+    const base = { sentNow: 0, failed: 0, missingImage: 0, overflow: 0, remaining: 0 };
+    const a = {
+      ...base,
+      sentNow: 100,
+      missingImage: 2,
+      overflow: 5,
+      remaining: 40,
+      scheduled: [{ at: "2026-10-29T09:00:00.000Z", count: 10 }],
+      remainingIds: ["x"],
+    };
+    const b = {
+      ...base,
+      sentNow: 40,
+      failed: 1,
+      missingImage: 2,
+      overflow: 5,
+      scheduled: [{ at: "2026-10-29T09:00:00.000Z", count: 5 }],
+      remainingIds: [],
+    };
+    expect(mergeSummaries(a, b, { bulk: false })).toEqual({
+      sentNow: 140,
+      failed: 1,
+      missingImage: 2,
+      overflow: 5,
+      remaining: 0,
+      remainingIds: [],
+      scheduled: [{ at: "2026-10-29T09:00:00.000Z", count: 15 }],
+    });
+  });
+
+  it("bulk: failed comes from the last call, which retries earlier failures", () => {
+    const base = { sentNow: 0, scheduled: [], missingImage: 0, overflow: 0, remainingIds: [] };
+    const first = { ...base, failed: 3, remaining: 5 };
+    const second = { ...base, sentNow: 2, failed: 3, remaining: 0 };
+    expect(mergeSummaries(first, second, { bulk: true }).failed).toBe(3);
+    expect(mergeSummaries(first, second, { bulk: false }).failed).toBe(6);
+  });
+});

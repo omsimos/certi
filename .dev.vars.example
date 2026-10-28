@@ -1,0 +1,25 @@
+# Copy to .dev.vars for local dev. In production use `wrangler secret put <NAME>`.
+
+# Random string, 32+ chars. Generate with: openssl rand -base64 32
+BETTER_AUTH_SECRET=
+# Public origin of the app; must match the OAuth callback hosts.
+BETTER_AUTH_URL=http://localhost:3000
+
+# Google OAuth client. Authorized redirect URI: <BETTER_AUTH_URL>/api/auth/callback/google
+# Leave empty to disable the provider locally.
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# GitHub OAuth app. Authorization callback URL: <BETTER_AUTH_URL>/api/auth/callback/github
+# Leave empty to disable the provider locally.
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+
+# Badge emails. `log` records them in memory and never calls Resend; `resend` sends for
+# real and needs RESEND_API_KEY and RESEND_FROM (a sender on a domain verified in Resend).
+EMAIL_MODE=log
+RESEND_API_KEY=
+# e.g. certi <badges@yourdomain.com>
+RESEND_FROM=
+# Emails per rolling day the app may schedule; Resend's free plan allows 100.
+RESEND_DAILY_LIMIT=100

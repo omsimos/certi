@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "sortTailwindcss": {
+    "stylesheet": "./src/styles.css",
+    "functions": ["cn", "cva", "clsx"]
+  },
+  "ignorePatterns": [
+    "dist",
+    "docs",
+    "public",
+    "bun.lock",
+    "worker-configuration.d.ts",
+    "src/routeTree.gen.ts"
+  ]
+}

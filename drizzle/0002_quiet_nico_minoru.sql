@@ -1,0 +1,1 @@
+ALTER TABLE `attendee` ADD `email_claimed_at` integer;

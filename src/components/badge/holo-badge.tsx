@@ -1,0 +1,358 @@
+import {
+  type PointerEvent as ReactPointerEvent,
+  type Ref,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+
+import { type Canvas2D, canvasToBlob } from "@/lib/badge/canvas";
+import { exportPainter } from "@/lib/badge/export-painter";
+import { drawFlatBadge } from "@/lib/badge/flat";
+import { type BadgeCardData, cardRect } from "@/lib/badge/layout";
+import { buildLettering, type Lettering } from "@/lib/badge/lettering";
+import { type Pose, pointerToCard, poseFromPointer, STILL_POSE, sweepPose } from "@/lib/badge/pose";
+import { type BadgeTemplate, TEMPLATE_MODE } from "@/lib/badge/templates";
+import { cn } from "@/lib/utils";
+
+import { PlainBadgeCard } from "./plain-badge-card";
+import {
+  createHoloRenderer,
+  type HoloRenderer,
+  type HoloScene,
+  WebGPUUnavailableError,
+} from "./holo-renderer";
+
+export type HoloBadgeHandle = {
+  backend: "webgpu" | "flat";
+  renderStill(o: {
+    width: number;
+    height: number;
+    type: "image/png" | "image/jpeg";
+    quality?: number;
+    pose?: Pose;
+  }): Promise<Blob>;
+  renderFrames(o: {
+    width: number;
+    height: number;
+    times: number[];
+    onFrame: (canvas: Canvas2D, i: number) => Promise<void>;
+    signal?: AbortSignal;
+  }): Promise<void>;
+};
+
+export type HoloBadgeProps = {
+  template: BadgeTemplate;
+  accent: string;
+  data: BadgeCardData;
+  logoUrl?: string | null;
+  interactive?: boolean;
+  className?: string;
+  ref?: Ref<HoloBadgeHandle>;
+  /** Fires on mount and whenever WebGPU is lost and the badge falls back to flat. */
+  onBackendChange?: (backend: HoloBadgeHandle["backend"]) => void;
+};
+
+type Backend = HoloBadgeHandle["backend"];
+
+const IDLE_MS = 2500;
+// One idle sweep per export loop, so the live card previews the animated export.
+const SWEEP_SECONDS = 4;
+const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
+
+const dpr = () => Math.min(Math.max(devicePixelRatio, 1), 2);
+
+function initialBackend(): Backend {
+  // Dev-only switch for checking the fallback in a WebGPU browser.
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has("flat")) return "flat";
+  return "webgpu";
+}
+
+export function HoloBadge({
+  template,
+  accent,
+  data,
+  logoUrl = null,
+  interactive = true,
+  className,
+  ref,
+  onBackendChange,
+}: HoloBadgeProps) {
+  const [backend, setBackend] = useState<Backend>(initialBackend);
+  const [lettering, setLettering] = useState<Lettering | null>(null);
+  // The card couldn't be drawn (e.g. a canvas API this browser lacks): show it as plain HTML.
+  const [failed, setFailed] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const tiltRef = useRef<HTMLDivElement>(null);
+  const sheenRef = useRef<HTMLDivElement>(null);
+  const props = useRef({ template, accent, data, logoUrl, interactive });
+  const onBackend = useRef(onBackendChange);
+  const letteringPromise = useRef<Promise<Lettering> | null>(null);
+  const scene = useRef<HoloScene | null>(null);
+  // Pointer and smoothed pose, mutated per frame without re-rendering.
+  const motion = useRef({
+    px: 0,
+    py: 0,
+    targetHover: 0,
+    tx: 0,
+    ty: 0,
+    hover: 0,
+    lx: 0.2,
+    ly: -0.25,
+    // No input yet, so the idle sweep plays from mount and keeps phones alive before a touch.
+    last: -Infinity,
+  });
+
+  useEffect(() => {
+    props.current = { template, accent, data, logoUrl, interactive };
+    onBackend.current = onBackendChange;
+  });
+
+  // Compared by value: callers often pass a fresh `data` object each render.
+  const letteringKey = JSON.stringify([template, data, logoUrl]);
+  useEffect(() => {
+    const { template, data, logoUrl } = props.current;
+    let cancelled = false;
+    const p = buildLettering(template, data, logoUrl);
+    letteringPromise.current = p;
+    p.then(
+      (l) => {
+        if (cancelled) return;
+        setLettering(l);
+        setFailed(false);
+      },
+      (err) => {
+        console.error(err);
+        if (!cancelled) setFailed(true);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [letteringKey]);
+
+  useEffect(() => {
+    scene.current = lettering
+      ? { template: lettering.template, accent, mask: lettering.mask }
+      : null;
+  }, [lettering, accent]);
+
+  useEffect(() => {
+    if (backend !== "webgpu" || failed) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const reduce = matchMedia(REDUCED_MOTION);
+    let renderer: HoloRenderer | null = null;
+    let applied: HoloScene | null = null;
+    let raf = 0;
+    let stopped = false;
+    let prev = performance.now();
+
+    const frame = (now: number) => {
+      raf = requestAnimationFrame(frame);
+      const dt = Math.min((now - prev) / 1000, 0.1);
+      prev = now;
+      const current = scene.current;
+      if (!renderer || !current) return;
+      if (current !== applied) {
+        renderer.setScene(current);
+        applied = current;
+      }
+
+      const w = Math.round(canvas.clientWidth * dpr());
+      const h = Math.round(canvas.clientHeight * dpr());
+      if (!w || !h) return;
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+
+      const m = motion.current;
+      const reduced = reduce.matches;
+      const { interactive, template } = props.current;
+      const blend = reduced ? 1 : 1 - Math.exp(-10 * dt);
+      if (!reduced && (!interactive || now - m.last > IDLE_MS)) {
+        // Offset per template so side-by-side previews don't sweep in lockstep.
+        const sweep = sweepPose(now / 1000 / SWEEP_SECONDS + TEMPLATE_MODE[template] * 0.3);
+        [m.px, m.py] = sweep.pointer;
+        m.targetHover = sweep.hover;
+      } else if (reduced && !interactive) {
+        [m.px, m.py] = STILL_POSE.pointer;
+        m.targetHover = STILL_POSE.hover;
+      }
+      const [tx, ty] = reduced ? [0, 0] : poseFromPointer(m.px, m.py, m.targetHover).tilt;
+      m.tx += (tx - m.tx) * blend;
+      m.ty += (ty - m.ty) * blend;
+      m.hover += (m.targetHover - m.hover) * blend;
+      if (m.targetHover > 0) {
+        m.lx += (m.px - m.lx) * blend;
+        m.ly += (m.py - m.ly) * blend;
+      }
+      renderer.draw({ tilt: [m.tx, m.ty], pointer: [m.lx, m.ly], hover: m.hover });
+    };
+
+    createHoloRenderer(canvas).then(
+      (r) => {
+        if (stopped) return r.dispose();
+        renderer = r;
+        r.lost.then(() => !stopped && setBackend("flat"));
+        raf = requestAnimationFrame(frame);
+      },
+      (err) => {
+        if (stopped) return;
+        if (!(err instanceof WebGPUUnavailableError)) console.error(err);
+        setBackend("flat");
+      },
+    );
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(raf);
+      renderer?.dispose();
+    };
+  }, [backend, failed]);
+
+  useEffect(() => {
+    if (backend !== "flat" || !lettering || failed) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      setFailed(true);
+      return;
+    }
+    const paint = () => {
+      const w = Math.round(canvas.clientWidth * dpr());
+      const h = Math.round(canvas.clientHeight * dpr());
+      if (!w || !h) return;
+      canvas.width = w;
+      canvas.height = h;
+      try {
+        drawFlatBadge(ctx, w, h, lettering.template, accent, lettering.canvas);
+      } catch (err) {
+        console.error(err);
+        setFailed(true);
+      }
+    };
+    // Also fires once on observe, which does the first paint.
+    const observer = new ResizeObserver(paint);
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [backend, lettering, accent, failed]);
+
+  useEffect(() => onBackend.current?.(backend), [backend]);
+
+  useImperativeHandle(ref, () => {
+    // What the viewer sees right now, so a still export matches the live card.
+    const livePose = (): Pose => {
+      if (backend === "flat" || !props.current.interactive) return STILL_POSE;
+      const m = motion.current;
+      return { tilt: [m.tx, m.ty], pointer: [m.lx, m.ly], hover: m.hover };
+    };
+    return {
+      backend,
+      async renderStill({ width, height, type, quality, pose }) {
+        const still = pose ?? livePose();
+        const l = await letteringPromise.current;
+        if (!l) throw new Error("The badge isn't ready yet");
+        const painter = await exportPainter(backend, l, props.current.accent, width, height);
+        try {
+          painter.paint(still);
+          return await canvasToBlob(painter.out, { type, quality });
+        } finally {
+          painter.dispose();
+        }
+      },
+      async renderFrames({ width, height, times, onFrame, signal }) {
+        const l = await letteringPromise.current;
+        if (!l) throw new Error("The badge isn't ready yet");
+        const painter = await exportPainter(backend, l, props.current.accent, width, height);
+        try {
+          for (let i = 0; i < times.length; i++) {
+            signal?.throwIfAborted();
+            painter.paint(sweepPose(times[i]));
+            await onFrame(painter.out, i);
+          }
+        } finally {
+          painter.dispose();
+        }
+      },
+    };
+  }, [backend]);
+
+  const flat = backend === "flat";
+
+  if (failed) return <PlainBadgeCard data={data} className={className} />;
+
+  const onPointer = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (!interactive || !e.isPrimary) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const p = pointerToCard(e.clientX, e.clientY, rect);
+    const m = motion.current;
+    m.px = p.x;
+    m.py = p.y;
+    m.targetHover = p.hover;
+    m.last = performance.now();
+    if (!flat) return;
+
+    const tiltEl = tiltRef.current;
+    const sheen = sheenRef.current;
+    if (!tiltEl || !sheen) return;
+    const [rx, ry] = matchMedia(REDUCED_MOTION).matches
+      ? [0, 0]
+      : poseFromPointer(p.x, p.y, p.hover).tilt;
+    // Same rotation axes as the shader: tilt.x turns about the vertical axis.
+    tiltEl.style.transform = `perspective(1200px) rotateX(${ry}rad) rotateY(${rx}rad)`;
+    const card = cardRect(rect.width, rect.height);
+    Object.assign(sheen.style, {
+      left: `${card.x}px`,
+      top: `${card.y}px`,
+      width: `${card.w}px`,
+      height: `${card.h}px`,
+      borderRadius: `${card.w * (0.055 / 1.28)}px`,
+      opacity: String(p.hover),
+      background: `radial-gradient(circle at ${e.clientX - rect.left - card.x}px ${e.clientY - rect.top - card.y}px, rgb(255 255 255 / 0.16), transparent 55%)`,
+    });
+  };
+
+  const onPointerLeave = () => {
+    const m = motion.current;
+    m.targetHover = 0;
+    m.last = performance.now();
+    if (tiltRef.current) tiltRef.current.style.transform = "";
+    if (sheenRef.current) sheenRef.current.style.opacity = "0";
+  };
+
+  return (
+    <div className={cn("relative", className)}>
+      <div ref={tiltRef} className="relative transition-transform duration-200 ease-out">
+        <canvas
+          key={backend}
+          ref={canvasRef}
+          data-backend={backend}
+          role="img"
+          aria-label={`${data.firstName} ${data.lastName}, ${data.eventTitle} badge`}
+          className={cn(
+            "block aspect-[300/430] w-full rounded-xl bg-[#090a0c]",
+            interactive && "touch-none",
+          )}
+          onPointerMove={onPointer}
+          onPointerDown={onPointer}
+          onPointerLeave={interactive ? onPointerLeave : undefined}
+        />
+        {flat && interactive && (
+          <div
+            ref={sheenRef}
+            aria-hidden
+            className="pointer-events-none absolute opacity-0 mix-blend-screen transition-opacity duration-200"
+          />
+        )}
+      </div>
+      {flat && interactive && (
+        <p className="mt-3 text-center text-sm text-muted-foreground">
+          Your browser doesn&apos;t support WebGPU, so you&apos;re seeing the flat badge.
+        </p>
+      )}
+    </div>
+  );
+}
