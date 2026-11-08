@@ -1,6 +1,7 @@
 import {
   type PointerEvent as ReactPointerEvent,
   type Ref,
+  type RefObject,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -12,7 +13,15 @@ import { exportPainter } from "@/lib/badge/export-painter";
 import { drawFlatBadge } from "@/lib/badge/flat";
 import { type BadgeCardData, cardRect } from "@/lib/badge/layout";
 import { buildLettering, type Lettering } from "@/lib/badge/lettering";
-import { type Pose, pointerToCard, poseFromPointer, STILL_POSE, sweepPose } from "@/lib/badge/pose";
+import {
+  applyOffset,
+  type BadgeControl,
+  type Pose,
+  pointerToCard,
+  poseFromPointer,
+  STILL_POSE,
+  sweepPose,
+} from "@/lib/badge/pose";
 import { type BadgeTemplate, TEMPLATE_MODE } from "@/lib/badge/templates";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +61,8 @@ export type HoloBadgeProps = {
   ref?: Ref<HoloBadgeHandle>;
   /** Fires on mount and whenever WebGPU is lost and the badge falls back to flat. */
   onBackendChange?: (backend: HoloBadgeHandle["backend"]) => void;
+  /** Read every WebGPU frame: its driver replaces the pointer/sweep pose, its offset applies on top. */
+  control?: RefObject<BadgeControl | null>;
 };
 
 type Backend = HoloBadgeHandle["backend"];
@@ -69,6 +80,13 @@ function initialBackend(): Backend {
   return "webgpu";
 }
 
+// The pose on screen once a caller's control (if any) has had its say.
+function controlled(base: Pose, control: HoloBadgeProps["control"]): Pose {
+  const c = control?.current;
+  if (!c) return base;
+  return applyOffset(c.driver ? c.driver() : base, c.offset);
+}
+
 export function HoloBadge({
   template,
   accent,
@@ -78,6 +96,7 @@ export function HoloBadge({
   className,
   ref,
   onBackendChange,
+  control,
 }: HoloBadgeProps) {
   const [backend, setBackend] = useState<Backend>(initialBackend);
   const [lettering, setLettering] = useState<Lettering | null>(null);
@@ -86,7 +105,7 @@ export function HoloBadge({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tiltRef = useRef<HTMLDivElement>(null);
   const sheenRef = useRef<HTMLDivElement>(null);
-  const props = useRef({ template, accent, data, logoUrl, interactive });
+  const props = useRef({ template, accent, data, logoUrl, interactive, control });
   const onBackend = useRef(onBackendChange);
   const letteringPromise = useRef<Promise<Lettering> | null>(null);
   const scene = useRef<HoloScene | null>(null);
@@ -105,7 +124,7 @@ export function HoloBadge({
   });
 
   useEffect(() => {
-    props.current = { template, accent, data, logoUrl, interactive };
+    props.current = { template, accent, data, logoUrl, interactive, control };
     onBackend.current = onBackendChange;
   });
 
@@ -189,7 +208,8 @@ export function HoloBadge({
         m.lx += (m.px - m.lx) * blend;
         m.ly += (m.py - m.ly) * blend;
       }
-      renderer.draw({ tilt: [m.tx, m.ty], pointer: [m.lx, m.ly], hover: m.hover });
+      const pose: Pose = { tilt: [m.tx, m.ty], pointer: [m.lx, m.ly], hover: m.hover };
+      renderer.draw(controlled(pose, props.current.control));
     };
 
     createHoloRenderer(canvas).then(
@@ -245,9 +265,11 @@ export function HoloBadge({
   useImperativeHandle(ref, () => {
     // What the viewer sees right now, so a still export matches the live card.
     const livePose = (): Pose => {
-      if (backend === "flat" || !props.current.interactive) return STILL_POSE;
+      if (backend === "flat") return STILL_POSE;
+      const { interactive, control } = props.current;
+      if (!interactive) return controlled(STILL_POSE, control);
       const m = motion.current;
-      return { tilt: [m.tx, m.ty], pointer: [m.lx, m.ly], hover: m.hover };
+      return controlled({ tilt: [m.tx, m.ty], pointer: [m.lx, m.ly], hover: m.hover }, control);
     };
     return {
       backend,

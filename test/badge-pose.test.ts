@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { frameTimes, pointerToCard, sweepPose } from "../src/lib/badge/pose";
+import {
+  applyOffset,
+  createBadgeControl,
+  frameTimes,
+  pointerToCard,
+  type Pose,
+  sweepPose,
+} from "../src/lib/badge/pose";
 
 describe("sweepPose", () => {
   it("loops seamlessly", () => {
@@ -29,5 +36,22 @@ describe("pointerToCard", () => {
   });
   it("has no hover far outside", () => {
     expect(pointerToCard(5000, 5000, rect).hover).toBe(0);
+  });
+});
+
+describe("applyOffset", () => {
+  const pose: Pose = { tilt: [0.1, -0.05], pointer: [0.3, -0.2], hover: 0.8 };
+  it("returns an equal pose for the identity offset", () => {
+    expect(applyOffset(pose, createBadgeControl().offset)).toEqual(pose);
+  });
+  it("adds tilt", () => {
+    const p = applyOffset(pose, { tiltX: 1, tiltY: -0.3, hover: 1 });
+    expect(p.tilt[0]).toBeCloseTo(1.1, 9);
+    expect(p.tilt[1]).toBeCloseTo(-0.35, 9);
+    expect(p.pointer).toEqual(pose.pointer);
+  });
+  it("multiplies hover", () => {
+    expect(applyOffset(pose, { tiltX: 0, tiltY: 0, hover: 0.5 }).hover).toBeCloseTo(0.4, 9);
+    expect(applyOffset(pose, { tiltX: 0, tiltY: 0, hover: 0 }).hover).toBe(0);
   });
 });
