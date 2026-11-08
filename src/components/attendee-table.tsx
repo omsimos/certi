@@ -1,5 +1,5 @@
 import { useRouter } from "@tanstack/react-router";
-import { LinkIcon, Trash2Icon } from "lucide-react";
+import { LinkIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { EditParticipantDialog } from "@/components/edit-participant-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -103,6 +104,7 @@ export function AttendeeTable({
   const [pending, setPending] = useState<Row | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirming, setConfirming] = useState<Row | null>(null);
+  const [editing, setEditing] = useState<Row | null>(null);
   const [, copy] = useCopyToClipboard();
   const [resending, setResending] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -225,7 +227,7 @@ export function AttendeeTable({
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-44 text-right">Actions</TableHead>
+                  <TableHead className="w-52 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -281,6 +283,14 @@ export function AttendeeTable({
                           <Button
                             variant="ghost"
                             size="icon-sm"
+                            onClick={() => setEditing(a)}
+                            aria-label={`Edit ${a.firstName} ${a.lastName}`}
+                          >
+                            <PencilIcon />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
                             onClick={() => copyLink(a)}
                             aria-label={`Copy badge link for ${a.firstName} ${a.lastName}`}
                           >
@@ -303,6 +313,16 @@ export function AttendeeTable({
             </Table>
           </div>
         </>
+      )}
+
+      {editing && (
+        <EditParticipantDialog
+          key={editing.id}
+          code={code}
+          attendee={editing}
+          open
+          onOpenChange={(open) => !open && setEditing(null)}
+        />
       )}
 
       <AlertDialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
