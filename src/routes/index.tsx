@@ -10,6 +10,7 @@ import { OpenSource } from "@/components/landing/open-source";
 import { Showcase } from "@/components/landing/showcase";
 import { Templates } from "@/components/landing/templates";
 import { TryIt } from "@/components/landing/try-it";
+import { useLandingMotion } from "@/components/landing/use-landing-motion";
 import { useGlowZone, usePointerGlow } from "@/components/landing/use-pointer-glow";
 import { type BadgeControl, createBadgeControl, STILL_POSE } from "@/lib/badge/pose";
 import { DEFAULT_ACCENT } from "@/lib/badge/templates";
@@ -40,7 +41,12 @@ function Landing() {
   const tryFx = useGlowZone();
   usePointerGlow([heroFx, tryFx]);
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
-  const [, setHeroBackend] = useState<"webgpu" | "flat" | null>(null);
+  const [heroBackend, setHeroBackend] = useState<"webgpu" | "flat" | null>(null);
+  useLandingMotion(
+    root,
+    { hero: heroControl, show: showControl, mail: mailControl },
+    heroBackend === "webgpu",
+  );
 
   return (
     // `dark` keeps the badge's own fallback text readable whatever the app theme is.
