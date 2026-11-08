@@ -170,7 +170,7 @@ function ManageEvent() {
           )}
         </TabsContent>
 
-        <TabsContent value="details" className="mt-8 max-w-md">
+        <TabsContent value="details" className="mt-8 max-w-4xl">
           <EventForm mode="edit" event={event} />
           <div className="mt-12">
             <DeleteEvent code={event.code} title={event.title} />
