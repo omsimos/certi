@@ -1,9 +1,9 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import type { DB } from "@/db";
 import { attendee, event, type Event } from "@/db/schema";
-import { effectiveEmailStatus } from "@/lib/email-status";
+import { CLAIM_TIMEOUT_MS, effectiveEmailStatus } from "@/lib/email-status";
 import {
   EventCodeTakenError,
   EventHasScheduledEmailsError,
@@ -93,8 +93,31 @@ export async function updateEvent(
   return row;
 }
 
-export async function listEventsByOwner(db: DB, ownerId: string): Promise<Event[]> {
-  return db.select().from(event).where(eq(event.ownerId, ownerId)).orderBy(desc(event.createdAt));
+export type EventListItem = Event & { participants: number; toSend: number };
+
+// `toSend` mirrors effectiveEmailStatus (not_sent, failed, stale claim) so it matches the
+// event page's Send badges count; change them together.
+export async function listEventSummariesByOwner(
+  db: DB,
+  ownerId: string,
+  now: Date = new Date(),
+): Promise<EventListItem[]> {
+  const cutoff = now.getTime() - CLAIM_TIMEOUT_MS;
+  return db
+    .select({
+      ...getTableColumns(event),
+      participants: sql<number>`count(${attendee.id})`.mapWith(Number),
+      toSend: sql<number>`coalesce(sum(case
+        when ${attendee.emailStatus} in ('not_sent', 'failed') then 1
+        when ${attendee.emailStatus} = 'scheduled' and ${attendee.resendId} is null
+          and (${attendee.emailClaimedAt} is null or ${attendee.emailClaimedAt} < ${cutoff}) then 1
+        else 0 end), 0)`.mapWith(Number),
+    })
+    .from(event)
+    .leftJoin(attendee, eq(attendee.eventId, event.id))
+    .where(eq(event.ownerId, ownerId))
+    .groupBy(event.id)
+    .orderBy(desc(event.createdAt));
 }
 
 const R2_DELETE_BATCH = 1000;

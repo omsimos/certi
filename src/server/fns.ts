@@ -30,7 +30,7 @@ import {
   deleteEvent,
   getEventByCode,
   getOwnedEvent,
-  listEventsByOwner,
+  listEventSummariesByOwner,
   toPublicEvent,
   updateEvent,
 } from "@/server/events";
@@ -80,7 +80,7 @@ export const getEventFn = createServerFn({ method: "GET" })
 
 export const listMyEventsFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .handler(({ context }) => listEventsByOwner(getDb(env.DB), context.user.id));
+  .handler(({ context }) => listEventSummariesByOwner(getDb(env.DB), context.user.id));
 
 export const getOwnedEventFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])

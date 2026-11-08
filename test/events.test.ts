@@ -21,10 +21,11 @@ import {
   deleteEvent,
   getEventByCode,
   getOwnedEvent,
-  listEventsByOwner,
+  listEventSummariesByOwner,
   toPublicEvent,
   updateEvent,
 } from "../src/server/events";
+import { summarizeEmails } from "../src/lib/email-summary";
 import { createTestEvent, createTestUser } from "./helpers";
 
 const db = getDb(env.DB);
@@ -132,7 +133,7 @@ describe("events", () => {
     // workerd freezes the clock between I/O, so force distinct createdAt values.
     await new Promise((r) => setTimeout(r, 5));
     const second = await createEvent(db, a.id, makeInput());
-    const list = await listEventsByOwner(db, a.id);
+    const list = await listEventSummariesByOwner(db, a.id);
     expect(list.map((e) => e.id)).toEqual([second.id, first.id]);
   });
 
@@ -280,5 +281,58 @@ describe("deleteEvent", () => {
     await expect(
       deleteEvent(db, env.BUCKET, other.id, "no-such-event", { now }),
     ).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
+
+describe("listEventSummariesByOwner", () => {
+  it("counts participants and badges still to send", async () => {
+    const owner = await createTestUser(db);
+    const empty = await createTestEvent(db, owner.id);
+    const ev = await createTestEvent(db, owner.id);
+    const now = new Date();
+    const rows: Partial<typeof attendee.$inferInsert>[] = [
+      { emailStatus: "not_sent" },
+      { emailStatus: "failed" },
+      { emailStatus: "sent" },
+      {
+        emailStatus: "scheduled",
+        resendId: "re_1",
+        emailScheduledFor: new Date(now.getTime() + 86_400_000),
+      },
+      { emailStatus: "scheduled", emailClaimedAt: now },
+      { emailStatus: "scheduled", emailClaimedAt: new Date(now.getTime() - 11 * 60_000) },
+    ];
+    for (const overrides of rows) {
+      const id = nanoid();
+      await db.insert(attendee).values({
+        id,
+        eventId: ev.id,
+        firstName: "A",
+        lastName: "B",
+        email: `${id.toLowerCase()}@example.com`,
+        ...overrides,
+      });
+    }
+
+    const list = await listEventSummariesByOwner(db, owner.id, now);
+    expect(list.find((e) => e.id === empty.id)).toMatchObject({ participants: 0, toSend: 0 });
+    const item = list.find((e) => e.id === ev.id);
+    expect(item).toMatchObject({ participants: 6, toSend: 3 });
+
+    // The event page's Send badges button counts the same rows.
+    const stored = await db.select().from(attendee).where(eq(attendee.eventId, ev.id));
+    const summary = summarizeEmails(stored, ev.updatedAt, now);
+    expect(item?.toSend).toBe(summary.notSent + summary.failed);
+  });
+
+  it("excludes other owners' events and orders newest first", async () => {
+    const [a, b] = [await createTestUser(db), await createTestUser(db)];
+    const first = await createTestEvent(db, a.id);
+    await createTestEvent(db, b.id);
+    // workerd freezes the clock between I/O, so force distinct createdAt values.
+    await new Promise((r) => setTimeout(r, 5));
+    const second = await createTestEvent(db, a.id, { createdAt: new Date(Date.now() + 5) });
+    const list = await listEventSummariesByOwner(db, a.id);
+    expect(list.map((e) => e.id)).toEqual([second.id, first.id]);
   });
 });
