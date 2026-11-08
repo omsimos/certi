@@ -18,9 +18,14 @@ export const Route = createFileRoute("/event/$code/")({
     return {
       meta: [
         { title: `${event.title} | Certi` },
-        { name: "description", content: event.description },
         { property: "og:title", content: event.title },
-        { property: "og:description", content: event.description },
+        // The description is optional, so only emit these tags when there is one.
+        ...(event.description
+          ? [
+              { name: "description", content: event.description },
+              { property: "og:description", content: event.description },
+            ]
+          : []),
       ],
     };
   },
@@ -41,14 +46,16 @@ function EventLanding() {
         </p>
       </div>
 
-      <div>
-        <h2 className="bg-zinc-800 from-foreground bg-clip-text text-left text-xl leading-none font-extrabold tracking-tighter text-transparent md:text-3xl dark:bg-linear-to-b dark:to-zinc-400">
-          About the Event
-        </h2>
-        <p className="mt-3 w-full text-lg break-words hyphens-auto text-muted-foreground md:w-3/4 md:text-xl">
-          {event.description}
-        </p>
-      </div>
+      {event.description && (
+        <div>
+          <h2 className="bg-zinc-800 from-foreground bg-clip-text text-left text-xl leading-none font-extrabold tracking-tighter text-transparent md:text-3xl dark:bg-linear-to-b dark:to-zinc-400">
+            About the event
+          </h2>
+          <p className="mt-3 w-full text-lg break-words hyphens-auto text-muted-foreground md:w-3/4 md:text-xl">
+            {event.description}
+          </p>
+        </div>
+      )}
 
       <p className="text-muted-foreground">Badges are emailed to attendees.</p>
     </main>

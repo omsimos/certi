@@ -171,8 +171,9 @@ describe("events", () => {
     expect(parse({ title: "ab" })).toBe(true);
     expect(parse({ title: "a".repeat(60) })).toBe(true);
     expect(parse({ title: "a".repeat(61) })).toBe(false);
-    expect(parse({ description: "a".repeat(24) })).toBe(false);
-    expect(parse({ description: "a".repeat(25) })).toBe(true);
+    expect(parse({ description: "" })).toBe(true);
+    expect(parse({ description: "a".repeat(250) })).toBe(true);
+    expect(parse({ description: "a".repeat(251) })).toBe(false);
     expect(parse({ organizer: "a".repeat(40) })).toBe(true);
     expect(parse({ organizer: "a".repeat(41) })).toBe(false);
   });

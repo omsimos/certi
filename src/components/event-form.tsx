@@ -105,7 +105,7 @@ export function EventForm({ mode, event }: EventFormProps) {
             <FieldDescription>
               {isEdit
                 ? "The event code cannot be changed."
-                : "Lowercase letters, numbers and dashes (3-32). Attendees use it to find the event."}
+                : "Lowercase letters, numbers and dashes (3-32). It appears in badge links and can't be changed later."}
             </FieldDescription>
             <FieldError errors={[errors.code]} />
           </Field>
@@ -142,7 +142,9 @@ export function EventForm({ mode, event }: EventFormProps) {
               className="resize-none"
               aria-invalid={!!errors.description}
             />
-            <FieldDescription>25-250 characters. Shown on the event page.</FieldDescription>
+            <FieldDescription>
+              Optional, up to 250 characters. Shown on the event&apos;s public page.
+            </FieldDescription>
             <FieldError errors={[errors.description]} />
           </Field>
         )}
