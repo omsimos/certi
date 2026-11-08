@@ -31,3 +31,18 @@ export function effectiveEmailStatus(row: EmailStatusRow, now: Date): EmailStatu
   }
   return row.emailStatus;
 }
+
+export type RowSendAction = { label: "Send" | "Retry" | "Resend"; confirm: boolean };
+
+// Only rows that already emailed (or will email) the person need a confirmation before a repeat.
+export function rowSendAction(status: EmailStatus): RowSendAction {
+  switch (status) {
+    case "not_sent":
+      return { label: "Send", confirm: false };
+    case "failed":
+      return { label: "Retry", confirm: false };
+    case "sent":
+    case "scheduled":
+      return { label: "Resend", confirm: true };
+  }
+}

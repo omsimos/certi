@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CLAIM_TIMEOUT_MS, effectiveEmailStatus } from "../src/lib/email-status";
+import { CLAIM_TIMEOUT_MS, effectiveEmailStatus, rowSendAction } from "../src/lib/email-status";
 
 const now = new Date("2026-10-28T09:00:00.000Z");
 const row = (o: Partial<Parameters<typeof effectiveEmailStatus>[0]>) => ({
@@ -49,5 +49,23 @@ describe("effectiveEmailStatus", () => {
     expect(effectiveEmailStatus(row({ emailStatus, emailScheduledFor: new Date(0) }), now)).toBe(
       emailStatus,
     );
+  });
+});
+
+describe("rowSendAction", () => {
+  it("sends a not-sent row without confirmation", () => {
+    expect(rowSendAction("not_sent")).toEqual({ label: "Send", confirm: false });
+  });
+
+  it("retries a failed row without confirmation", () => {
+    expect(rowSendAction("failed")).toEqual({ label: "Retry", confirm: false });
+  });
+
+  it("confirms before resending a sent row", () => {
+    expect(rowSendAction("sent")).toEqual({ label: "Resend", confirm: true });
+  });
+
+  it("confirms before resending a scheduled row", () => {
+    expect(rowSendAction("scheduled")).toEqual({ label: "Resend", confirm: true });
   });
 });

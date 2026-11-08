@@ -39,8 +39,9 @@ import { probeWebGPU } from "@/lib/badge/webgpu-support";
 import { filterAttendees } from "@/lib/attendee-filter";
 import type { AttendeeFilter } from "@/lib/attendee-filter";
 import { hasErrorName } from "@/lib/errors";
-import { effectiveEmailStatus } from "@/lib/email-status";
+import { effectiveEmailStatus, rowSendAction } from "@/lib/email-status";
 import { describeSendSummary, formatShortDate, imageIsCurrent } from "@/lib/email-summary";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { sendAllBadges } from "@/lib/send-badges-client";
 import { deleteAttendeeFn } from "@/server/fns";
 
@@ -75,6 +76,14 @@ function StatusCell({ row, now }: { row: Row; now: Date }) {
   return <span className="text-muted-foreground">Not sent</span>;
 }
 
+function confirmDescription(row: Row, now: Date) {
+  if (effectiveEmailStatus(row, now) === "scheduled") {
+    return `Their badge email is scheduled for ${row.emailScheduledFor ? formatShortDate(row.emailScheduledFor) : "later"}. This cancels it and sends a new one in the next free slot.`;
+  }
+  const at = row.emailSentAt ?? row.emailScheduledFor;
+  return `They were sent their badge${at ? ` on ${formatShortDate(at)}` : ""}. They'll get a second email.`;
+}
+
 export function AttendeeTable({
   code,
   attendees,
@@ -93,6 +102,8 @@ export function AttendeeTable({
   const router = useRouter();
   const [pending, setPending] = useState<Row | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [confirming, setConfirming] = useState<Row | null>(null);
+  const [, copy] = useCopyToClipboard();
   const [resending, setResending] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<AttendeeFilter>("all");
@@ -139,13 +150,8 @@ export function AttendeeTable({
   }
 
   async function copyLink(attendee: Row) {
-    const url = `${location.origin}/event/${code}/badge/${attendee.id}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Badge link copied");
-    } catch {
-      toast.error("Could not copy the link");
-    }
+    const ok = await copy(`${origin}/event/${code}/badge/${attendee.id}`);
+    (ok ? toast.success : toast.error)(ok ? "Badge link copied" : "Could not copy the link");
   }
 
   async function confirmDelete() {
@@ -243,58 +249,86 @@ export function AttendeeTable({
                     </TableCell>
                   </TableRow>
                 )}
-                {visible.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="font-medium">
-                      {a.firstName} {a.lastName}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{a.email}</TableCell>
-                    <TableCell className="text-sm">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <StatusCell row={a} now={now} />
-                        {a.badgeImageVersion && !imageIsCurrent(a, event.updatedAt) && (
-                          <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
-                            Image out of date
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => resend(a)}
-                          disabled={resending !== null}
-                          aria-label={`Resend badge to ${a.firstName} ${a.lastName}`}
-                        >
-                          {resending === a.id ? "Sending..." : "Resend"}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => copyLink(a)}
-                          aria-label={`Copy badge link for ${a.firstName} ${a.lastName}`}
-                        >
-                          <LinkIcon />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => setPending(a)}
-                          aria-label={`Delete ${a.firstName} ${a.lastName}`}
-                        >
-                          <Trash2Icon />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {visible.map((a) => {
+                  const action = rowSendAction(effectiveEmailStatus(a, now));
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell className="font-medium">
+                        {a.firstName} {a.lastName}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{a.email}</TableCell>
+                      <TableCell className="text-sm">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <StatusCell row={a} now={now} />
+                          {a.badgeImageVersion && !imageIsCurrent(a, event.updatedAt) && (
+                            <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+                              Image out of date
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => (action.confirm ? setConfirming(a) : resend(a))}
+                            disabled={resending !== null}
+                            aria-label={`${action.label} badge to ${a.firstName} ${a.lastName}`}
+                          >
+                            {resending === a.id ? "Sending..." : action.label}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => copyLink(a)}
+                            aria-label={`Copy badge link for ${a.firstName} ${a.lastName}`}
+                          >
+                            <LinkIcon />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => setPending(a)}
+                            aria-label={`Delete ${a.firstName} ${a.lastName}`}
+                          >
+                            <Trash2Icon />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
         </>
       )}
+
+      <AlertDialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirming && `Email ${confirming.firstName} ${confirming.lastName} again?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirming && confirmDescription(confirming, now)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const row = confirming;
+                setConfirming(null);
+                if (row) void resend(row);
+              }}
+            >
+              Send again
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
         <AlertDialogContent>
