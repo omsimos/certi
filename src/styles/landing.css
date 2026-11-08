@@ -1,0 +1,1440 @@
+/*
+ * Landing page, ported from the approved design. Every rule is scoped under .landing and the page
+ * is always dark: nothing here reads the app's light/dark theme variables.
+ */
+
+@property --holo-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.landing {
+  --void: #07080a;
+  --stage: #090a0c;
+  --graphite: #101114;
+  --graphite-lit: #131518;
+  --foil: #1f242e;
+  --rim: #404752;
+  --outline: #4a525c;
+  --mark: #7a828c;
+  --tint: #b8c2cc;
+  --ink: #c4c9d1;
+  --on-ink: #07080a;
+  --faint: rgba(255, 255, 255, 0.35);
+  --pearl-rose: #f53a68;
+  --pearl-magenta: #be1fa6;
+  --pearl-violet: #6a3fe2;
+  --pearl-blue: #2b88fa;
+  --pearl-cyan: #24cfdf;
+  --pearl-mint: #5aeba0;
+  --pearl-olive: #aeca64;
+  --pearl-coral: #ee814d;
+  --focus: var(--pearl-cyan);
+  --pearl:
+    var(--pearl-rose), var(--pearl-magenta), var(--pearl-violet), var(--pearl-blue),
+    var(--pearl-cyan), var(--pearl-mint), var(--pearl-olive), var(--pearl-coral);
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-serif: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-card: 12px;
+  --shadow-card: 6px 14px 32px rgba(0, 0, 0, 0.7);
+  --shadow-rim: inset 0 0 0 1px #404752;
+  --gutter: clamp(20px, 5vw, 64px);
+  /* The design's raster images aren't in the repo; these vector stand-ins play the same roles. */
+  --etch-img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-1000 -650 2000 1300' fill='none' stroke='white' stroke-width='2'%3E%3Cellipse rx='34' ry='22'/%3E%3Cellipse rx='68' ry='44'/%3E%3Cellipse rx='102' ry='66'/%3E%3Cellipse rx='136' ry='88'/%3E%3Cellipse rx='170' ry='110'/%3E%3Cellipse rx='204' ry='133'/%3E%3Cellipse rx='238' ry='155'/%3E%3Cellipse rx='272' ry='177'/%3E%3Cellipse rx='306' ry='199'/%3E%3Cellipse rx='340' ry='221'/%3E%3Cellipse rx='374' ry='243'/%3E%3Cellipse rx='408' ry='265'/%3E%3Cellipse rx='442' ry='287'/%3E%3Cellipse rx='476' ry='309'/%3E%3Cellipse rx='510' ry='332'/%3E%3Cellipse rx='544' ry='354'/%3E%3Cellipse rx='578' ry='376'/%3E%3Cellipse rx='612' ry='398'/%3E%3Cellipse rx='646' ry='420'/%3E%3Cellipse rx='680' ry='442'/%3E%3Cellipse rx='714' ry='464'/%3E%3Cellipse rx='748' ry='486'/%3E%3Cellipse rx='782' ry='508'/%3E%3Cellipse rx='816' ry='530'/%3E%3Cellipse rx='850' ry='552'/%3E%3Cellipse rx='884' ry='575'/%3E%3Cellipse rx='918' ry='597'/%3E%3Cellipse rx='952' ry='619'/%3E%3Cellipse rx='986' ry='641'/%3E%3C/svg%3E");
+  --fractal-img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 866'%3E%3Cdefs%3E%3Cpath id='t0' d='M500 0L1000 866H0Z' fill='none' stroke='white' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3Cg id='t1'%3E%3Cuse href='%23t0' transform='translate(250 0) scale(.5)'/%3E%3Cuse href='%23t0' transform='translate(0 433) scale(.5)'/%3E%3Cuse href='%23t0' transform='translate(500 433) scale(.5)'/%3E%3C/g%3E%3Cg id='t2'%3E%3Cuse href='%23t1' transform='translate(250 0) scale(.5)'/%3E%3Cuse href='%23t1' transform='translate(0 433) scale(.5)'/%3E%3Cuse href='%23t1' transform='translate(500 433) scale(.5)'/%3E%3C/g%3E%3Cg id='t3'%3E%3Cuse href='%23t2' transform='translate(250 0) scale(.5)'/%3E%3Cuse href='%23t2' transform='translate(0 433) scale(.5)'/%3E%3Cuse href='%23t2' transform='translate(500 433) scale(.5)'/%3E%3C/g%3E%3Cg id='t4'%3E%3Cuse href='%23t3' transform='translate(250 0) scale(.5)'/%3E%3Cuse href='%23t3' transform='translate(0 433) scale(.5)'/%3E%3Cuse href='%23t3' transform='translate(500 433) scale(.5)'/%3E%3C/g%3E%3Cg id='t5'%3E%3Cuse href='%23t4' transform='translate(250 0) scale(.5)'/%3E%3Cuse href='%23t4' transform='translate(0 433) scale(.5)'/%3E%3Cuse href='%23t4' transform='translate(500 433) scale(.5)'/%3E%3C/g%3E%3C/defs%3E%3Cuse href='%23t5'/%3E%3C/svg%3E");
+  --grain-img: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.1 0 0 0 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+
+  position: relative;
+  min-height: 100vh;
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+.landing a {
+  color: var(--tint);
+  text-underline-offset: 3px;
+}
+.landing a:hover {
+  color: var(--ink);
+}
+.landing a:focus-visible,
+.landing button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.landing ::selection {
+  background: var(--foil);
+  color: var(--ink);
+}
+
+/* ---------- Design-system components: Button, Tag, Hint, Input ---------- */
+
+.landing .holo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    --holo-angle 600ms ease;
+}
+.landing .holo-btn-md {
+  height: 36px;
+  padding: 0 var(--space-4);
+}
+.landing .holo-btn-sm {
+  height: 28px;
+  padding: 0 var(--space-3);
+  font-size: 13px;
+}
+.landing .holo-btn-solid {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.landing .holo-btn-solid:hover {
+  background: var(--tint);
+}
+/* Solid buttons are links here, so keep the dark text over the generic link hover colour. */
+.landing a.holo-btn-solid,
+.landing a.holo-btn-solid:hover {
+  color: var(--on-ink);
+}
+.landing .holo-btn-ghost {
+  background: transparent;
+  border-color: var(--mark);
+  color: var(--ink);
+}
+.landing .holo-btn-ghost:hover {
+  background: var(--graphite-lit);
+}
+/* Graphite at rest; the pearl border turns on with hover or focus, the way the card's foil does. */
+.landing .holo-btn-holo {
+  color: var(--ink);
+  background:
+    linear-gradient(var(--graphite), var(--graphite)) padding-box,
+    linear-gradient(var(--mark), var(--mark)) border-box;
+}
+.landing .holo-btn-holo:hover,
+.landing .holo-btn-holo:focus-visible {
+  --holo-angle: 140deg;
+  background:
+    linear-gradient(var(--graphite-lit), var(--graphite-lit)) padding-box,
+    conic-gradient(
+        from var(--holo-angle),
+        var(--pearl-rose),
+        var(--pearl-magenta),
+        var(--pearl-violet),
+        var(--pearl-blue),
+        var(--pearl-cyan),
+        var(--pearl-mint),
+        var(--pearl-olive),
+        var(--pearl-coral),
+        var(--pearl-rose)
+      )
+      border-box;
+}
+.landing .holo-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.landing .holo-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.landing .holo-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mark);
+  border-radius: var(--radius-sm);
+}
+.landing .holo-tag-outline,
+.landing .holo-tag-foil {
+  padding: 2px var(--space-2);
+  border: 1px solid var(--rim);
+  color: var(--tint);
+}
+.landing .holo-tag-foil {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--graphite), var(--graphite)) padding-box,
+    linear-gradient(
+        100deg,
+        var(--pearl-rose),
+        var(--pearl-violet),
+        var(--pearl-cyan),
+        var(--pearl-mint),
+        var(--pearl-coral)
+      )
+      border-box;
+}
+
+.landing .holo-hint {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--faint);
+}
+
+.landing .holo-field {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 320px;
+}
+.landing .holo-field-label {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--tint);
+}
+.landing .holo-input {
+  height: 36px;
+  padding: 0 var(--space-3);
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--graphite);
+  border: 1px solid var(--mark);
+  border-radius: var(--radius-md);
+}
+.landing .holo-input::placeholder {
+  color: var(--mark);
+}
+.landing .holo-input:hover {
+  background: var(--graphite-lit);
+}
+.landing .holo-input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.landing .holo-input:disabled {
+  opacity: 0.4;
+}
+
+/* ---------- Page ---------- */
+
+.landing section,
+.landing footer {
+  position: relative;
+  z-index: 1;
+}
+/* Film grain over everything, fixed to the window so it never scrolls. */
+.landing .grain {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background: var(--grain-img) 0 0 / 200px 200px repeat;
+}
+.landing .wrap {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+}
+.landing .head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+/* ---------- Type: Geist for everything, Instrument Serif italic where a phrase should feel human ---------- */
+
+.landing .kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--tint);
+}
+.landing .kicker::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 200deg,
+    var(--pearl-rose),
+    var(--pearl-violet),
+    var(--pearl-blue),
+    var(--pearl-cyan),
+    var(--pearl-mint),
+    var(--pearl-olive),
+    var(--pearl-coral),
+    var(--pearl-rose)
+  );
+}
+.landing .it {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+}
+.landing .display {
+  margin: 0;
+  font-size: clamp(44px, 5.9vw, 86px);
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  color: var(--ink);
+}
+.landing .display .it,
+.landing .h2 .it {
+  white-space: nowrap;
+}
+.landing .display .it {
+  font-size: 1.1em;
+  letter-spacing: -0.02em;
+}
+.landing .line {
+  display: block;
+  overflow: hidden;
+  padding: 0 0.08em 0.22em 0;
+  margin: 0 -0.08em -0.22em 0;
+}
+.landing .line > span {
+  display: block;
+}
+.landing .h2 {
+  margin: 0;
+  font-size: clamp(36px, 4.2vw, 60px);
+  line-height: 1.05;
+  font-weight: 500;
+  letter-spacing: -0.038em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.landing .h2 .it {
+  font-size: 1.08em;
+  letter-spacing: -0.012em;
+}
+.landing .h3 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.landing .h4 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+}
+.landing .lede {
+  margin: 0;
+  font-size: clamp(18px, 1.45vw, 21px);
+  line-height: 1.55;
+  color: var(--tint);
+  max-width: 31em;
+  text-wrap: pretty;
+}
+.landing .body {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--tint);
+  max-width: 34em;
+  text-wrap: pretty;
+}
+.landing .caption {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--mark);
+}
+.landing .num {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  line-height: 0.9;
+  color: var(--tint);
+  font-variant-numeric: lining-nums;
+}
+
+/* Words that catch the light: plain ink until the page light passes over them. */
+.landing .foil {
+  --gx: -9999px;
+  --gy: -9999px;
+  --gi: 0;
+  padding: 0 0.06em;
+  margin: 0 -0.06em;
+  background-color: var(--ink);
+  background-image: radial-gradient(
+    circle 210px at var(--gx) var(--gy),
+    color-mix(in oklab, #f6f9fc calc(var(--gi) * 100%), var(--ink)) 0%,
+    color-mix(in oklab, var(--pearl-mint) calc(var(--gi) * 72%), var(--ink)) 16%,
+    color-mix(in oklab, var(--pearl-cyan) calc(var(--gi) * 72%), var(--ink)) 32%,
+    color-mix(in oklab, var(--pearl-violet) calc(var(--gi) * 62%), var(--ink)) 52%,
+    color-mix(in oklab, var(--pearl-rose) calc(var(--gi) * 62%), var(--ink)) 70%,
+    var(--ink) 92%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---------- Design-system components, in sentence case ---------- */
+
+.landing .holo-tag {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.landing .holo-tag-outline,
+.landing .holo-tag-foil {
+  padding: 3px 11px;
+  border-radius: 999px;
+}
+.landing .holo-hint {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--mark);
+}
+.landing .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.landing .actions .holo-btn,
+.landing .open-btn {
+  height: 48px;
+  padding: 0 22px;
+  font-size: 15px;
+}
+.landing a.holo-btn {
+  text-decoration: none;
+}
+.landing a.holo-btn-ghost:hover,
+.landing a.holo-btn-holo:hover {
+  color: var(--ink);
+}
+
+/* ---------- Badge slots ---------- */
+/*
+ * The design's 1 : 1.35 slot is replaced by HoloBadge's own taller canvas. Both frame the card by
+ * min(height, width * 1.35), so a slot of the same width shows the same card size.
+ */
+.landing .slot {
+  position: relative;
+  width: 100%;
+}
+/* Vertical swipes over a badge still scroll the page. */
+.landing .slot canvas {
+  touch-action: pan-y;
+}
+.landing .slot-ph {
+  aspect-ratio: 300 / 430;
+  width: 100%;
+  border-radius: 12px;
+  background: var(--stage);
+}
+
+/* ---------- Etched backgrounds: the badge's contour rings at page scale, lit by a pearl glow ---------- */
+
+.landing .etch {
+  --ew: 2000px;
+  --eh: 1300px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: -1;
+  width: var(--ew);
+  height: var(--eh);
+  margin: calc(var(--eh) / -2) 0 0 calc(var(--ew) / -2);
+  pointer-events: none;
+}
+.landing .etch-try {
+  --ew: 1600px;
+  --eh: 1040px;
+}
+.landing .etch-show {
+  --ew: 1500px;
+  --eh: 1000px;
+}
+.landing .etch-lines,
+.landing .etch-light {
+  position: absolute;
+  inset: 0;
+}
+.landing .etch-lines {
+  background: var(--etch-img) 0 0 / 100% 100% no-repeat;
+  opacity: 0.09;
+  -webkit-mask-image: radial-gradient(
+    closest-side,
+    #000 28%,
+    rgba(0, 0, 0, 0.42) 62%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(closest-side, #000 28%, rgba(0, 0, 0, 0.42) 62%, transparent 100%);
+}
+.landing .etch-light {
+  -webkit-mask-image: var(--etch-img), radial-gradient(closest-side, #000 45%, transparent 100%);
+  mask-image: var(--etch-img), radial-gradient(closest-side, #000 45%, transparent 100%);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+.landing .etch-glow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 720px;
+  height: 720px;
+  opacity: 0;
+  background-image: linear-gradient(
+    150deg,
+    var(--pearl-violet) 6%,
+    var(--pearl-blue) 22%,
+    var(--pearl-cyan) 36%,
+    var(--pearl-mint) 48%,
+    var(--pearl-olive) 60%,
+    var(--pearl-coral) 72%,
+    var(--pearl-rose) 84%,
+    var(--pearl-magenta) 96%
+  );
+  background-size: var(--ew) var(--eh);
+  background-repeat: no-repeat;
+  -webkit-mask-image: radial-gradient(closest-side, #000, rgba(0, 0, 0, 0.5) 50%, transparent);
+  mask-image: radial-gradient(closest-side, #000, rgba(0, 0, 0, 0.5) 50%, transparent);
+  will-change: transform, opacity;
+}
+
+/* ---------- Nav ---------- */
+
+.landing .nav {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding-block: 20px;
+}
+.landing .brand {
+  font-size: 24px;
+  line-height: 44px;
+  font-weight: 600;
+  letter-spacing: -0.05em;
+  color: var(--ink);
+  text-decoration: none;
+}
+.landing .brand:hover {
+  color: var(--ink);
+}
+.landing .nav-links {
+  display: flex;
+  gap: 2px;
+  font-size: 15px;
+  line-height: 20px;
+}
+.landing .nav-links a {
+  padding: 12px 14px;
+  border-radius: 999px;
+  color: var(--tint);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.landing .nav-links a:hover {
+  color: var(--ink);
+  background: rgba(196, 201, 209, 0.07);
+}
+.landing .nav-links a:focus-visible {
+  border-radius: 999px;
+}
+.landing .nav-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.landing .nav-actions .holo-btn {
+  height: 44px;
+  padding: 0 18px;
+  font-size: 14px;
+}
+
+/* ---------- Hero ---------- */
+
+.landing .hero {
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  min-height: 900px;
+}
+.landing .hero-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: center;
+  padding-block: 24px 88px;
+}
+.landing .hero-copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 28px;
+}
+.landing .hero-note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--mark);
+}
+.landing .hero-stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.landing .hero-badge {
+  width: min(100%, 500px);
+}
+
+/* ---------- Manifesto ---------- */
+
+.landing .manifesto {
+  padding-block: 150px 130px;
+}
+.landing .manifesto-text {
+  margin: 0;
+  max-width: 20.5em;
+  font-size: clamp(30px, 3.9vw, 56px);
+  line-height: 1.14;
+  font-weight: 400;
+  letter-spacing: -0.032em;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.landing .manifesto-text .it {
+  font-size: 1.08em;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- The badge ---------- */
+
+.landing .show {
+  padding-block: 130px;
+  overflow: clip;
+}
+.landing .show-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 72px;
+  align-items: center;
+}
+.landing .show-stage {
+  position: relative;
+  z-index: 0;
+}
+.landing .show-badge {
+  width: min(100%, 560px);
+  margin-inline: auto;
+}
+.landing .show-side {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+.landing .show-body {
+  display: grid;
+  grid-template-columns: 2px minmax(0, 1fr);
+  gap: 28px;
+}
+.landing .rail {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1px;
+  background: var(--rim);
+}
+.landing .rail-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: top;
+  transform: scaleY(0);
+  background: linear-gradient(180deg, var(--pearl));
+}
+.landing .steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 36px;
+}
+.landing .step {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  column-gap: 18px;
+  row-gap: 8px;
+}
+.landing .step .num {
+  grid-row: 1 / span 2;
+  font-size: 52px;
+  margin-top: -6px;
+}
+
+/* ---------- Designs ---------- */
+
+.landing .tpl {
+  padding-block: 130px;
+}
+.landing .tpl-head {
+  margin-bottom: 60px;
+}
+.landing .tpl-viewport {
+  overflow: hidden;
+}
+.landing .tpl-track {
+  box-sizing: border-box;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 48px;
+}
+.landing .tpl-panel {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+.landing .tpl-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.landing .tpl-name {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  font-family: var(--font-serif);
+  font-size: 46px;
+  line-height: 1.05;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.landing .tpl-tag {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--mark);
+}
+.landing .swatch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 2px;
+}
+.landing .swatches {
+  display: flex;
+  flex-wrap: wrap;
+}
+.landing .swatch {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.landing .swatch-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+.landing .swatch:hover .swatch-dot {
+  transform: scale(1.12);
+}
+.landing .swatch.is-on .swatch-dot {
+  box-shadow:
+    0 0 0 3px var(--void),
+    0 0 0 4px var(--ink);
+}
+.landing .swatch:focus-visible {
+  border-radius: 50%;
+}
+.landing .swatch-name {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--tint);
+}
+
+/* ---------- How it works ---------- */
+
+.landing .flow {
+  background: var(--stage);
+  padding-block: 140px;
+}
+.landing .flow-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: 80px;
+  align-items: start;
+}
+.landing .flow-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.landing .flow-steps {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+.landing .flow-step {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  column-gap: 18px;
+  row-gap: 8px;
+  padding-block: 26px;
+  border-top: 1px solid var(--rim);
+}
+.landing .flow-step:last-child {
+  border-bottom: 1px solid var(--rim);
+}
+.landing .flow-step .num {
+  grid-row: 1 / span 2;
+  font-size: 48px;
+  margin-top: -4px;
+}
+.landing .status {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 540px;
+  margin-top: 8px;
+  padding: 4px 20px;
+  border-radius: 16px;
+  background: var(--graphite);
+  box-shadow: var(--shadow-rim);
+}
+.landing .status-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding-block: 16px 14px;
+}
+.landing .status-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.landing .status-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  border-top: 1px solid var(--rim);
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--ink);
+}
+.landing .who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.landing .avatar {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--foil);
+  color: var(--tint);
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
+}
+.landing .row-end {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.landing .status .holo-btn {
+  height: 36px;
+  padding: 0 14px;
+}
+.landing .state .holo-tag::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mark);
+}
+.landing .state-sent .holo-tag::before {
+  background: var(--pearl-mint);
+}
+.landing .state-later .holo-tag::before {
+  background: var(--pearl-blue);
+}
+.landing .state-failed .holo-tag {
+  color: var(--pearl-coral);
+}
+.landing .state-failed .holo-tag::before {
+  background: var(--pearl-coral);
+}
+.landing .mail {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 460px;
+  margin-inline: auto;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--graphite);
+  box-shadow: var(--shadow-card), var(--shadow-rim);
+}
+.landing .mail-head {
+  display: grid;
+  gap: 6px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--rim);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink);
+}
+.landing .mail-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+}
+.landing .mail-k {
+  color: var(--mark);
+}
+.landing .mail-subj {
+  font-weight: 500;
+}
+.landing .mail-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 30px 26px 26px;
+  background: var(--void);
+}
+.landing .mail-h {
+  align-self: stretch;
+  margin: 0;
+  font-size: 21px;
+  line-height: 27px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.landing .mail-sub {
+  align-self: stretch;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--tint);
+}
+.landing .mail-img {
+  margin-top: 12px;
+}
+.landing .mail-btn {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 22px;
+  border-radius: var(--radius-md);
+  background: var(--ink);
+  color: var(--on-ink);
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 120ms ease;
+}
+.landing .mail-btn:hover {
+  background: var(--tint);
+  color: var(--on-ink);
+}
+.landing .mail-foot {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--mark);
+  text-align: center;
+}
+
+/* ---------- Keep and share ---------- */
+
+.landing .exports {
+  padding-block: 140px 120px;
+}
+.landing .exports-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+  gap: 80px;
+  align-items: center;
+}
+.landing .exports-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.landing .loop-badge {
+  width: min(100%, 460px);
+}
+.landing .exports-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  align-items: flex-start;
+}
+.landing .formats {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  width: 100%;
+}
+.landing .format {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-block: 18px;
+  border-top: 1px solid var(--rim);
+}
+.landing .format:last-child {
+  border-bottom: 1px solid var(--rim);
+}
+.landing .fmt-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.landing .fmt-name {
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+}
+.landing .fmt-note {
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--tint);
+}
+.landing .strip-viewport {
+  margin-top: 100px;
+  overflow-x: auto;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+.landing .strip {
+  display: flex;
+  gap: 20px;
+  width: max-content;
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+  padding-bottom: 8px;
+}
+.landing .frame {
+  margin: 0;
+}
+.landing .frame-badge {
+  width: clamp(120px, 13vw, 188px);
+}
+.landing .frame-badge img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+}
+
+/* ---------- Open source ---------- */
+
+.landing .open {
+  background: var(--stage);
+  padding-block: 150px;
+  overflow: clip;
+}
+.landing .open-fractal {
+  position: absolute;
+  right: -220px;
+  bottom: -400px;
+  width: 1140px;
+  height: 996px;
+  background: var(--fractal-img) center / contain no-repeat;
+  opacity: 0.07;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 25%, transparent 88%);
+  mask-image: linear-gradient(180deg, #000 25%, transparent 88%);
+}
+.landing .open-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 80px;
+  align-items: start;
+}
+.landing .open-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  align-items: flex-start;
+}
+.landing .facts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.landing .fact {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-block: 22px;
+  border-top: 1px solid var(--rim);
+}
+.landing .fact:last-child {
+  border-bottom: 1px solid var(--rim);
+}
+.landing .fact-text {
+  margin: 0;
+  max-width: 30em;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--tint);
+}
+
+/* ---------- Try it ---------- */
+
+.landing .try {
+  overflow: clip;
+  padding-block: 140px;
+}
+.landing .try-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 80px;
+  align-items: center;
+}
+.landing .try-copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  align-items: flex-start;
+}
+.landing .try-fields {
+  width: 100%;
+  max-width: 520px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.landing .try-fields .holo-field {
+  max-width: none;
+}
+.landing .try-fields .holo-input {
+  height: 44px;
+  font-size: 16px;
+}
+.landing .pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.landing .pill {
+  height: 44px;
+  padding: 0 20px;
+  border: 1px solid var(--mark);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tint);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+.landing .pill:hover {
+  background: var(--graphite-lit);
+  color: var(--ink);
+}
+.landing .pill.is-on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+}
+.landing .pill:focus-visible {
+  border-radius: 999px;
+}
+.landing .try-stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.landing .try-badge {
+  width: min(100%, 480px);
+}
+
+/* ---------- Footer ---------- */
+
+.landing .foot {
+  padding-top: 40px;
+  overflow: clip;
+  border-top: 1px solid var(--rim);
+}
+.landing .foot-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 32px;
+}
+.landing .foot-links {
+  display: flex;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.landing .foot-links a {
+  padding: 12px 10px;
+  text-decoration: none;
+}
+.landing .wordmark {
+  margin: 40px 0 -0.05em;
+  font-size: clamp(120px, 29vw, 430px);
+  line-height: 0.8;
+  font-weight: 600;
+  letter-spacing: -0.065em;
+  text-align: center;
+  color: var(--foil);
+  opacity: 0.7;
+  user-select: none;
+}
+
+/* ---------- Scroll-driven layouts, only once GSAP is running (.is-motion) ---------- */
+
+.landing.is-motion .hero {
+  min-height: max(100vh, 760px);
+  box-sizing: border-box;
+}
+.landing.is-motion .hero-badge {
+  width: min(100%, 500px, 60vh);
+}
+@media (min-width: 960px) {
+  .landing.is-motion .show {
+    height: 100vh;
+    box-sizing: border-box;
+    padding-block: 0;
+    display: flex;
+    align-items: center;
+  }
+  .landing.is-motion .show-badge {
+    width: min(100%, 560px, 66vh);
+  }
+  .landing.is-motion .steps {
+    gap: 0;
+  }
+  .landing.is-motion .step {
+    grid-area: 1 / 1;
+  }
+  .landing.is-motion .tpl {
+    height: 100vh;
+    box-sizing: border-box;
+    padding-block: 56px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 44px;
+    overflow: hidden;
+  }
+  .landing.is-motion .tpl-head {
+    margin-bottom: 0;
+  }
+  .landing.is-motion .tpl-track {
+    display: flex;
+    width: max-content;
+    max-width: none;
+    margin: 0;
+    gap: 120px;
+    padding-inline: max(64px, calc((100vw - 1360px) / 2 + 64px));
+  }
+  .landing.is-motion .tpl-panel {
+    width: min(76vw, 980px);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 64px;
+    align-items: center;
+  }
+  /* The design sized this 1 : 1.35 slot by height; the same card size, set by width. */
+  .landing.is-motion .tpl-badge {
+    width: calc(min(56vh, 560px) / 1.35);
+  }
+}
+.landing.is-motion .strip-viewport {
+  overflow: hidden;
+}
+
+@media (max-width: 959px) {
+  .landing .tpl-track {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 560px;
+  }
+  .landing .nav-links {
+    order: 3;
+    width: calc(100% + 28px);
+    margin-inline: -14px;
+    overflow-x: auto;
+  }
+}
+@media (max-width: 900px) {
+  .landing .hero {
+    min-height: 0;
+  }
+  .landing .hero-grid,
+  .landing .show-grid,
+  .landing .flow-grid,
+  .landing .exports-grid,
+  .landing .open-grid,
+  .landing .try-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 56px;
+  }
+  .landing .hero-grid {
+    padding-block: 24px 72px;
+  }
+  .landing .display {
+    font-size: clamp(40px, 10.5vw, 72px);
+  }
+  .landing .manifesto,
+  .landing .show,
+  .landing .tpl,
+  .landing .flow,
+  .landing .exports,
+  .landing .open,
+  .landing .try {
+    padding-block: 96px;
+  }
+  .landing .exports-stage {
+    order: 2;
+  }
+}
+@media (max-width: 560px) {
+  .landing .nav-actions .holo-btn-ghost {
+    display: none;
+  }
+  .landing .try-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .landing .step,
+  .landing .flow-step {
+    grid-template-columns: 40px minmax(0, 1fr);
+    column-gap: 14px;
+  }
+  .landing .step .num,
+  .landing .flow-step .num {
+    font-size: 42px;
+  }
+  .landing .tpl-name {
+    font-size: 40px;
+  }
+  .landing .format {
+    flex-wrap: wrap;
+    gap: 8px 24px;
+  }
+}
+@media (forced-colors: active) {
+  .landing .foil {
+    background: none;
+    -webkit-text-fill-color: currentColor;
+  }
+  .landing .grain,
+  .landing .etch,
+  .landing .open-fractal {
+    display: none;
+  }
+}

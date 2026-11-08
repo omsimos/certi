@@ -62,6 +62,10 @@ export function Navbar() {
   const attendeeFacing = useMatches({
     select: (ms) => ms.some((m) => m.staticData?.attendeeFacing),
   });
+  const hidden = useMatches({
+    select: (ms) => ms.some((m) => m.staticData?.hideNavbar),
+  });
+  if (hidden) return null;
   return (
     <div className="absolute inset-x-0 top-0 z-10 container mx-auto flex items-center justify-between pt-10 font-mono text-sm">
       <Link to="/">
