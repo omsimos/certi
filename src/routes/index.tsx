@@ -1,7 +1,7 @@
-import { ClientOnly, createFileRoute } from "@tanstack/react-router";
+import { ClientOnly, createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 
-import { FindEventDialog } from "@/components/find-event-dialog";
+import { Button } from "@/components/ui/button";
 import RetroGrid from "@/components/magicui/retro-grid";
 import type { BadgeCardData } from "@/lib/badge/layout";
 import { DEFAULT_ACCENT } from "@/lib/badge/templates";
@@ -51,7 +51,11 @@ function Home() {
         you time and effort.
       </p>
 
-      <FindEventDialog />
+      <div className="flex gap-3">
+        <Button size="lg" nativeButton={false} render={<Link to="/dashboard/new" />}>
+          Create an event
+        </Button>
+      </div>
       <div className="w-full max-w-xs pb-16">
         <ClientOnly fallback={placeholder}>
           <DemoBadge />
