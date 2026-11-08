@@ -1,4 +1,4 @@
-import { Link, useMatches, useNavigate } from "@tanstack/react-router";
+import { Link, useLoaderData, useMatches, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,11 +12,12 @@ import { authClient } from "@/lib/auth-client";
 import { ToggleTheme } from "./toggle-theme";
 
 function AuthButton() {
-  const { data: session } = authClient.useSession();
+  const initial = useLoaderData({ from: "__root__" });
+  const { data: session, isPending } = authClient.useSession();
   const navigate = useNavigate();
-  const user = session?.user;
+  // The server-rendered session covers first paint; the client session takes over once loaded so sign-out updates immediately.
+  const user = isPending ? initial?.user : session?.user;
 
-  // Also the SSR and loading state: the session is only known on the client.
   if (!user) {
     return (
       <Button variant="outline" nativeButton={false} render={<Link to="/login" />}>
@@ -25,7 +26,7 @@ function AuthButton() {
     );
   }
 
-  const initial = (user.name || user.email).charAt(0).toUpperCase();
+  const letter = (user.name || user.email).charAt(0).toUpperCase();
 
   return (
     <DropdownMenu>
@@ -35,7 +36,7 @@ function AuthButton() {
         {user.image ? (
           <img src={user.image} alt="" referrerPolicy="no-referrer" className="size-full" />
         ) : (
-          <span aria-hidden>{initial}</span>
+          <span aria-hidden>{letter}</span>
         )}
         <span className="sr-only">Account menu</span>
       </DropdownMenuTrigger>
