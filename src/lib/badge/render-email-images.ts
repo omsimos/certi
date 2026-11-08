@@ -1,13 +1,13 @@
 import type { Attendee } from "@/db/schema";
 import { exportPainter } from "@/lib/badge/export-painter";
 import { canvasToBlob } from "@/lib/badge/canvas";
+import { EMAIL_IMAGE_SIZE } from "@/lib/badge/email-image-size";
 import { badgeCardData } from "@/lib/badge/card-data";
 import { buildLettering } from "@/lib/badge/lettering";
 import { STILL_POSE } from "@/lib/badge/pose";
 import type { BadgeTemplate } from "@/lib/badge/templates";
 import { uploadBadgeImageFn } from "@/server/fns";
 
-export const EMAIL_IMAGE_SIZE = [1200, 1706] as const;
 const JPEG_QUALITY = 0.88;
 
 export const isStaleVersionError = (message: string) => message.includes("Event changed");

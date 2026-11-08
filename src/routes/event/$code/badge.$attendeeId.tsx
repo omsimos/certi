@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { badgeCardData } from "@/lib/badge/card-data";
 import { badgeFileName } from "@/lib/badge/file-name";
-import { EMAIL_IMAGE_SIZE } from "@/lib/badge/render-email-images";
+import { EMAIL_IMAGE_SIZE } from "@/lib/badge/email-image-size";
 import { getBadgeFn, getOriginFn } from "@/server/fns";
 
 const ExportMenu = lazy(() =>
