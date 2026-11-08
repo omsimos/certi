@@ -1119,6 +1119,9 @@
 .landing .frame-badge {
   width: clamp(120px, 13vw, 188px);
 }
+.landing .frame-badge .slot-ph {
+  aspect-ratio: 270 / 384;
+}
 .landing .frame-badge img {
   display: block;
   width: 100%;

@@ -1,6 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useRef, useState } from "react";
 
-import { demoCard, LandingBadge } from "@/components/landing/landing-badge";
+import { Delivery } from "@/components/landing/delivery";
+import { Exports } from "@/components/landing/exports";
+import { Footer } from "@/components/landing/footer";
+import { Hero } from "@/components/landing/hero";
+import { Manifesto } from "@/components/landing/manifesto";
+import { OpenSource } from "@/components/landing/open-source";
+import { Showcase } from "@/components/landing/showcase";
+import { Templates } from "@/components/landing/templates";
+import { TryIt } from "@/components/landing/try-it";
+import { useGlowZone } from "@/components/landing/use-pointer-glow";
+import { type BadgeControl, createBadgeControl, STILL_POSE } from "@/lib/badge/pose";
+import { DEFAULT_ACCENT } from "@/lib/badge/templates";
 import landingCss from "@/styles/landing.css?url";
 
 export const Route = createFileRoute("/")({
@@ -19,10 +31,29 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
+  const root = useRef<HTMLDivElement>(null);
+  const heroControl = useRef(createBadgeControl());
+  const showControl = useRef(createBadgeControl());
+  // The email picture is a still, so it holds one pose instead of sweeping.
+  const mailControl = useRef<BadgeControl>({ ...createBadgeControl(), driver: () => STILL_POSE });
+  const heroFx = useGlowZone();
+  const tryFx = useGlowZone();
+  const [accent, setAccent] = useState(DEFAULT_ACCENT);
+  const [, setHeroBackend] = useState<"webgpu" | "flat" | null>(null);
+
   return (
-    <div className="landing">
+    // `dark` keeps the badge's own fallback text readable whatever the app theme is.
+    <div ref={root} className="landing dark">
       <div className="grain" aria-hidden="true" />
-      <LandingBadge className="hero-badge" data={demoCard("Alex", "Rivera")} />
+      <Hero control={heroControl} fx={heroFx} onBadgeBackend={setHeroBackend} />
+      <Manifesto />
+      <Showcase control={showControl} />
+      <Templates accent={accent} onAccent={setAccent} />
+      <Delivery mailControl={mailControl} />
+      <Exports />
+      <OpenSource />
+      <TryIt accent={accent} fx={tryFx} />
+      <Footer />
     </div>
   );
 }
