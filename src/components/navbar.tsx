@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useMatches, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,9 @@ function AuthButton() {
 }
 
 export function Navbar() {
+  const attendeeFacing = useMatches({
+    select: (ms) => ms.some((m) => m.staticData?.attendeeFacing),
+  });
   return (
     <div className="absolute inset-x-0 top-0 z-10 container mx-auto flex items-center justify-between pt-10 font-mono text-sm">
       <Link to="/">
@@ -67,7 +70,7 @@ export function Navbar() {
       </Link>
       <div className="flex items-center gap-2">
         <ToggleTheme />
-        <AuthButton />
+        {!attendeeFacing && <AuthButton />}
       </div>
     </div>
   );

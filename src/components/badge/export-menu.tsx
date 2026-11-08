@@ -11,9 +11,9 @@ type Format = "png" | "mp4" | "webp" | "gif";
 type Run = (handle: HoloBadgeHandle, o: ExportOptions) => Promise<Blob>;
 
 const LABELS: Record<Format, string> = {
-  png: "PNG",
-  mp4: "MP4 · for Instagram / TikTok / X",
-  webp: "Animated WebP",
+  png: "image",
+  mp4: "MP4",
+  webp: "WebP",
   gif: "GIF",
 };
 
@@ -36,11 +36,11 @@ function download(blob: Blob, name: string) {
 
 export function ExportMenu({
   handle,
-  attendeeId,
+  fileName,
   backend,
 }: {
   handle: RefObject<HoloBadgeHandle | null>;
-  attendeeId: string;
+  fileName: (ext: Format) => string;
   backend: HoloBadgeHandle["backend"] | null;
 }) {
   const [supported, setSupported] = useState<Format[]>([]);
@@ -61,7 +61,7 @@ export function ExportMenu({
     };
   }, []);
 
-  const available: Format[] = backend === "webgpu" ? ["png", ...supported] : ["png"];
+  const animated: Format[] = backend === "webgpu" ? supported : [];
 
   useEffect(() => () => abort.current?.abort(), []);
 
@@ -77,11 +77,11 @@ export function ExportMenu({
       const blob = await exporter(h, { signal: controller.signal, onProgress: setProgress });
       // A cancel during the last frame or the encode still resolves; don't download it.
       controller.signal.throwIfAborted();
-      download(blob, `badge-${attendeeId}.${format}`);
+      download(blob, fileName(format));
     } catch (e) {
       if (!controller.signal.aborted) {
         console.error(e);
-        toast.error(`Couldn't export the ${LABELS[format].split(" ")[0]}. Try again.`);
+        toast.error(`Couldn't export the ${LABELS[format]}. Try again.`);
       }
     } finally {
       setRunning(null);
@@ -90,11 +90,28 @@ export function ExportMenu({
 
   return (
     <div className="flex w-full max-w-sm flex-col gap-2">
-      {available.map((f) => (
-        <Button key={f} variant="outline" disabled={running !== null} onClick={() => run(f)}>
-          {LABELS[f]}
-        </Button>
-      ))}
+      <Button disabled={running !== null} onClick={() => run("png")}>
+        Download image
+      </Button>
+      {animated.length > 0 && (
+        <>
+          <p className="text-xs text-muted-foreground">Animated · 4-second loop</p>
+          <div className="flex gap-2">
+            {animated.map((f) => (
+              <Button
+                key={f}
+                variant="outline"
+                size="sm"
+                disabled={running !== null}
+                title={f === "mp4" ? "Best for Instagram, TikTok and X" : undefined}
+                onClick={() => run(f)}
+              >
+                {LABELS[f]}
+              </Button>
+            ))}
+          </div>
+        </>
+      )}
       {running && (
         <div className="flex items-center gap-3">
           <div
