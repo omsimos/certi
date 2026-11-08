@@ -1,5 +1,5 @@
 import { useRouter } from "@tanstack/react-router";
-import { useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { parseAttendeeRows, type ParsedAttendees } from "@/lib/attendee-rows";
+import { attendeeInputSchema } from "@/lib/schemas";
 import { hasErrorName } from "@/lib/errors";
 import { importAttendeesFn } from "@/server/fns";
 
@@ -46,6 +47,9 @@ export function AddParticipants({ code, onImported }: { code: string; onImported
   const [json, setJson] = useState("");
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [one, setOne] = useState({ firstName: "", lastName: "", email: "" });
+  const [oneError, setOneError] = useState<string | null>(null);
+  const [addingOne, setAddingOne] = useState(false);
 
   function showParsed(result: ParsedAttendees) {
     setParsed(result);
@@ -126,6 +130,38 @@ export function AddParticipants({ code, onImported }: { code: string; onImported
     }
   }
 
+  async function handleAddOne(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const result = attendeeInputSchema.safeParse(one);
+    if (!result.success) {
+      setOneError(result.error.issues[0]?.message ?? "Check the details and try again");
+      return;
+    }
+    setOneError(null);
+    setAddingOne(true);
+    try {
+      const { inserted } = await importAttendeesFn({
+        data: { code, attendees: [result.data] },
+      });
+      if (inserted === 0) {
+        toast.error("That email is already in this event");
+        return;
+      }
+      toast.success("Added");
+      setOne({ firstName: "", lastName: "", email: "" });
+      await router.invalidate();
+      onImported?.();
+    } catch (err) {
+      toast.error(
+        hasErrorName(err, "ForbiddenError", "NotFoundError")
+          ? "You can't change this event"
+          : "Something went wrong. Please try again.",
+      );
+    } finally {
+      setAddingOne(false);
+    }
+  }
+
   const errors = parsed?.errors ?? [];
   const attendees = parsed?.attendees ?? [];
 
@@ -191,6 +227,42 @@ export function AddParticipants({ code, onImported }: { code: string; onImported
           </Button>
         </div>
       </div>
+
+      <form onSubmit={handleAddOne} noValidate className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium">Or add one person</h2>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            placeholder="First name"
+            aria-label="First name"
+            autoComplete="off"
+            value={one.firstName}
+            onChange={(e) => setOne({ ...one, firstName: e.target.value })}
+          />
+          <Input
+            placeholder="Last name"
+            aria-label="Last name"
+            autoComplete="off"
+            value={one.lastName}
+            onChange={(e) => setOne({ ...one, lastName: e.target.value })}
+          />
+          <Input
+            type="email"
+            placeholder="Email"
+            aria-label="Email"
+            autoComplete="off"
+            value={one.email}
+            onChange={(e) => setOne({ ...one, email: e.target.value })}
+          />
+          <Button type="submit" disabled={addingOne}>
+            {addingOne ? "Adding..." : "Add"}
+          </Button>
+        </div>
+        {oneError && (
+          <p role="alert" className="text-sm text-destructive">
+            {oneError}
+          </p>
+        )}
+      </form>
 
       {errors.length > 0 && (
         <div
