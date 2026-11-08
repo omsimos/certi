@@ -33,6 +33,35 @@ export type RenderEmailImagesOptions = {
   onProgress?: (done: number, total: number) => void;
 };
 
+export async function renderEmailImagePreview(o: {
+  mode: "rendered" | "simple";
+  event: EmailEvent;
+  logoUrl: string | null;
+  attendee: Pick<Attendee, "id" | "firstName" | "lastName">;
+  origin: string;
+}): Promise<Blob> {
+  const [width, height] = EMAIL_IMAGE_SIZE;
+  const lettering = await buildLettering(
+    o.event.template,
+    badgeCardData(o.event, o.attendee, o.origin),
+    o.logoUrl,
+  );
+  const painter = await exportPainter(
+    o.mode === "rendered" ? "webgpu" : "flat",
+    lettering,
+    o.event.accentColor,
+    width,
+    height,
+  );
+  try {
+    painter.setLettering(lettering);
+    painter.paint(STILL_POSE);
+    return await canvasToBlob(painter.out, { type: "image/jpeg", quality: JPEG_QUALITY });
+  } finally {
+    painter.dispose();
+  }
+}
+
 export async function renderEmailImages(
   o: RenderEmailImagesOptions,
 ): Promise<{ uploaded: number; failed: { id: string; error: string }[] }> {

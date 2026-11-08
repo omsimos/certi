@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-type BadgeEmailData = {
+export type BadgeEmailData = {
   firstName: string;
   eventTitle: string;
   organizer: string;
