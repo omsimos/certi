@@ -1,7 +1,15 @@
 import { env } from "cloudflare:workers";
+import { eq } from "drizzle-orm";
+import { nanoid } from "nanoid";
 import { describe, expect, it } from "vitest";
 import { getDb } from "../src/db";
-import { EventCodeTakenError, ForbiddenError, NotFoundError } from "../src/lib/errors";
+import { attendee, event as eventTable } from "../src/db/schema";
+import {
+  EventCodeTakenError,
+  EventHasScheduledEmailsError,
+  ForbiddenError,
+  NotFoundError,
+} from "../src/lib/errors";
 import {
   eventCodeSchema,
   eventInputSchema,
@@ -10,13 +18,14 @@ import {
 } from "../src/lib/schemas";
 import {
   createEvent,
+  deleteEvent,
   getEventByCode,
   getOwnedEvent,
   listEventsByOwner,
   toPublicEvent,
   updateEvent,
 } from "../src/server/events";
-import { createTestUser } from "./helpers";
+import { createTestEvent, createTestUser } from "./helpers";
 
 const db = getDb(env.DB);
 
@@ -182,5 +191,93 @@ describe("events", () => {
     const created = await createEvent(db, a.id, stray);
     expect(created.ownerId).toBe(a.id);
     expect(created.id).not.toBe("forced-id");
+  });
+});
+
+describe("deleteEvent", () => {
+  const now = new Date("2026-06-01T12:00:00Z");
+  const day = 24 * 60 * 60_000;
+
+  async function seed(overrides: Partial<typeof attendee.$inferInsert> = {}, logoKey?: string) {
+    const owner = await createTestUser(db);
+    const ev = await createTestEvent(db, owner.id, { logoKey });
+    const id = nanoid();
+    await db.insert(attendee).values({
+      id,
+      eventId: ev.id,
+      firstName: "A",
+      lastName: "B",
+      email: `${id.toLowerCase()}@example.com`,
+      ...overrides,
+    });
+    return { owner, ev, id };
+  }
+
+  const remaining = async (ev: { id: string }) => ({
+    events: await db.select().from(eventTable).where(eq(eventTable.id, ev.id)),
+    attendees: await db.select().from(attendee).where(eq(attendee.eventId, ev.id)),
+  });
+
+  it("deletes the event and its attendees", async () => {
+    const { owner, ev } = await seed();
+    await deleteEvent(db, env.BUCKET, owner.id, ev.code, { now });
+    const left = await remaining(ev);
+    expect(left.events).toEqual([]);
+    expect(left.attendees).toEqual([]);
+  });
+
+  it("removes the logo and badge image objects", async () => {
+    const tag = nanoid();
+    const logoKey = `logos/${tag}.png`;
+    const badgeKey = `badges/v1/${tag}/1.jpg`;
+    await env.BUCKET.put(logoKey, "logo");
+    await env.BUCKET.put(badgeKey, "badge");
+    const { owner, ev } = await seed({ badgeImageKey: badgeKey }, logoKey);
+    await deleteEvent(db, env.BUCKET, owner.id, ev.code, { now });
+    expect(await env.BUCKET.head(logoKey)).toBeNull();
+    expect(await env.BUCKET.head(badgeKey)).toBeNull();
+  });
+
+  it("refuses while an email is scheduled for later", async () => {
+    const { owner, ev } = await seed({
+      emailStatus: "scheduled",
+      emailScheduledFor: new Date(now.getTime() + day),
+      resendId: "re_1",
+    });
+    await expect(deleteEvent(db, env.BUCKET, owner.id, ev.code, { now })).rejects.toBeInstanceOf(
+      EventHasScheduledEmailsError,
+    );
+    const left = await remaining(ev);
+    expect(left.events).toHaveLength(1);
+    expect(left.attendees).toHaveLength(1);
+  });
+
+  it("allows when the scheduled email has already gone out", async () => {
+    const { owner, ev } = await seed({
+      emailStatus: "scheduled",
+      emailScheduledFor: new Date(now.getTime() - day),
+      resendId: "re_1",
+    });
+    await deleteEvent(db, env.BUCKET, owner.id, ev.code, { now });
+    expect((await remaining(ev)).events).toEqual([]);
+  });
+
+  it("refuses on a fresh claim", async () => {
+    const { owner, ev } = await seed({ emailStatus: "scheduled", emailClaimedAt: now });
+    await expect(deleteEvent(db, env.BUCKET, owner.id, ev.code, { now })).rejects.toBeInstanceOf(
+      EventHasScheduledEmailsError,
+    );
+    expect((await remaining(ev)).events).toHaveLength(1);
+  });
+
+  it("rejects another owner and unknown codes", async () => {
+    const { ev } = await seed();
+    const other = await createTestUser(db);
+    await expect(deleteEvent(db, env.BUCKET, other.id, ev.code, { now })).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
+    await expect(
+      deleteEvent(db, env.BUCKET, other.id, "no-such-event", { now }),
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

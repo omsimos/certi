@@ -2,8 +2,14 @@ import { and, desc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import type { DB } from "@/db";
-import { event, type Event } from "@/db/schema";
-import { EventCodeTakenError, ForbiddenError, NotFoundError } from "@/lib/errors";
+import { attendee, event, type Event } from "@/db/schema";
+import { effectiveEmailStatus } from "@/lib/email-status";
+import {
+  EventCodeTakenError,
+  EventHasScheduledEmailsError,
+  ForbiddenError,
+  NotFoundError,
+} from "@/lib/errors";
 import type { EventInput, EventUpdate } from "@/lib/schemas";
 
 // Drizzle wraps the D1 error, so the SQLite message may sit on `cause`.
@@ -89,4 +95,44 @@ export async function updateEvent(
 
 export async function listEventsByOwner(db: DB, ownerId: string): Promise<Event[]> {
   return db.select().from(event).where(eq(event.ownerId, ownerId)).orderBy(desc(event.createdAt));
+}
+
+const R2_DELETE_BATCH = 1000;
+
+export async function deleteEvent(
+  db: DB,
+  bucket: R2Bucket,
+  ownerId: string,
+  code: string,
+  opts: { now?: Date } = {},
+): Promise<void> {
+  const now = opts.now ?? new Date();
+  const ev = await getOwnedEvent(db, ownerId, code);
+  const rows = await db
+    .select({
+      emailStatus: attendee.emailStatus,
+      emailScheduledFor: attendee.emailScheduledFor,
+      emailClaimedAt: attendee.emailClaimedAt,
+      resendId: attendee.resendId,
+      badgeImageKey: attendee.badgeImageKey,
+    })
+    .from(attendee)
+    .where(eq(attendee.eventId, ev.id));
+
+  // Resend would still send these and the links would 404; cancelling hundreds exceeds the subrequest limit.
+  const waiting = rows.filter((r) => effectiveEmailStatus(r, now) === "scheduled").length;
+  if (waiting > 0) {
+    throw new EventHasScheduledEmailsError(
+      `${waiting} badge ${waiting === 1 ? "email is" : "emails are"} scheduled. Delete the event after ${waiting === 1 ? "it goes" : "they go"} out, or remove those participants first.`,
+    );
+  }
+
+  // Attendees go with the event via the foreign-key cascade.
+  await db.delete(event).where(and(eq(event.id, ev.id), eq(event.ownerId, ownerId)));
+
+  const keys = [ev.logoKey, ...rows.map((r) => r.badgeImageKey)].filter((k): k is string => !!k);
+  // A leftover object is only storage, so a failed cleanup never fails the delete.
+  for (let i = 0; i < keys.length; i += R2_DELETE_BATCH) {
+    await bucket.delete(keys.slice(i, i + R2_DELETE_BATCH)).catch(() => undefined);
+  }
 }

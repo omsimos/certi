@@ -27,6 +27,7 @@ import { readEmailConfig } from "@/server/email/config";
 import { sendBadges } from "@/server/email/send-badges";
 import {
   createEvent,
+  deleteEvent,
   getEventByCode,
   getOwnedEvent,
   listEventsByOwner,
@@ -61,6 +62,13 @@ export const updateEventFn = createServerFn({ method: "POST" })
   .validator(eventUpdateSchema.extend({ code: eventCodeSchema }))
   .handler(({ data: { code, ...input }, context }) =>
     updateEvent(getDb(env.DB), context.user.id, code, input),
+  );
+
+export const deleteEventFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(codeInput)
+  .handler(({ data, context }) =>
+    deleteEvent(getDb(env.DB), env.BUCKET, context.user.id, data.code),
   );
 
 export const getEventFn = createServerFn({ method: "GET" })

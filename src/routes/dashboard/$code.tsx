@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { AddParticipants } from "@/components/add-participants";
 import { AttendeeTable } from "@/components/attendee-table";
+import { DeleteEvent } from "@/components/delete-event";
 import { EventForm } from "@/components/event-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -171,6 +172,9 @@ function ManageEvent() {
 
         <TabsContent value="details" className="mt-8 max-w-md">
           <EventForm mode="edit" event={event} />
+          <div className="mt-12">
+            <DeleteEvent code={event.code} title={event.title} />
+          </div>
         </TabsContent>
       </Tabs>
     </main>
