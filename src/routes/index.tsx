@@ -10,7 +10,7 @@ import { OpenSource } from "@/components/landing/open-source";
 import { Showcase } from "@/components/landing/showcase";
 import { Templates } from "@/components/landing/templates";
 import { TryIt } from "@/components/landing/try-it";
-import { useGlowZone } from "@/components/landing/use-pointer-glow";
+import { useGlowZone, usePointerGlow } from "@/components/landing/use-pointer-glow";
 import { type BadgeControl, createBadgeControl, STILL_POSE } from "@/lib/badge/pose";
 import { DEFAULT_ACCENT } from "@/lib/badge/templates";
 import landingCss from "@/styles/landing.css?url";
@@ -38,6 +38,7 @@ function Landing() {
   const mailControl = useRef<BadgeControl>({ ...createBadgeControl(), driver: () => STILL_POSE });
   const heroFx = useGlowZone();
   const tryFx = useGlowZone();
+  usePointerGlow([heroFx, tryFx]);
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
   const [, setHeroBackend] = useState<"webgpu" | "flat" | null>(null);
 
