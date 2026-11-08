@@ -15,7 +15,13 @@ import {
 } from "@/lib/schemas";
 import { parseLogoUpload, removeEventLogo, saveEventLogo } from "@/server/assets";
 import { parseBadgeImageUpload, saveBadgeImage } from "@/server/badge-images";
-import { deleteAttendee, getBadge, importAttendees, listAttendees } from "@/server/attendees";
+import {
+  deleteAttendee,
+  getBadge,
+  importAttendees,
+  listAttendees,
+  updateAttendee,
+} from "@/server/attendees";
 import { createEmailClient } from "@/server/email/client";
 import { readEmailConfig } from "@/server/email/config";
 import { sendBadges } from "@/server/email/send-badges";
@@ -96,6 +102,20 @@ export const deleteAttendeeFn = createServerFn({ method: "POST" })
   .handler(({ data, context }) =>
     deleteAttendee(getDb(env.DB), env.BUCKET, context.user.id, data.code, data.attendeeId, {
       // Built lazily: only a scheduled email needs Resend, so deletes work without a key.
+      cancel: (resendId) => createEmailClient(readEmailConfig(env)).cancel(resendId),
+    }),
+  );
+
+export const updateAttendeeFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    attendeeInputSchema.extend({
+      code: eventCodeSchema,
+      attendeeId: z.string().min(1).max(64),
+    }),
+  )
+  .handler(({ data: { code, attendeeId, ...input }, context }) =>
+    updateAttendee(getDb(env.DB), context.user.id, code, attendeeId, input, {
       cancel: (resendId) => createEmailClient(readEmailConfig(env)).cancel(resendId),
     }),
   );
