@@ -166,10 +166,11 @@ export function HoloBadge({
     let applied: HoloScene | null = null;
     let raf = 0;
     let stopped = false;
+    let visible = true;
     let prev = performance.now();
 
     const frame = (now: number) => {
-      raf = requestAnimationFrame(frame);
+      raf = visible ? requestAnimationFrame(frame) : 0;
       const dt = Math.min((now - prev) / 1000, 0.1);
       prev = now;
       const current = scene.current;
@@ -217,7 +218,7 @@ export function HoloBadge({
         if (stopped) return r.dispose();
         renderer = r;
         r.lost.then(() => !stopped && setBackend("flat"));
-        raf = requestAnimationFrame(frame);
+        if (visible) raf = requestAnimationFrame(frame);
       },
       (err) => {
         if (stopped) return;
@@ -225,8 +226,21 @@ export function HoloBadge({
         setBackend("flat");
       },
     );
+    // Off-screen badges stop drawing (the template picker and landing page show several).
+    const observer = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (!visible) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      } else if (renderer && !raf) {
+        prev = performance.now();
+        raf = requestAnimationFrame(frame);
+      }
+    });
+    observer.observe(canvas);
     return () => {
       stopped = true;
+      observer.disconnect();
       cancelAnimationFrame(raf);
       renderer?.dispose();
     };
