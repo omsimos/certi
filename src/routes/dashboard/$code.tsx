@@ -1,4 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { PlusIcon } from "lucide-react";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { z } from "zod";
 
@@ -6,6 +7,13 @@ import { AddParticipants } from "@/components/add-participants";
 import { AttendeeTable } from "@/components/attendee-table";
 import { EventForm } from "@/components/event-form";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { hasErrorName } from "@/lib/errors";
@@ -65,6 +73,7 @@ function EventNotFound() {
 function ManageEvent() {
   const { event, attendees, origin, now } = Route.useLoaderData();
   const [sendOpen, setSendOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const summary = useMemo(
     () => summarizeEmails(attendees, event.updatedAt, now),
     [attendees, event.updatedAt, now],
@@ -100,12 +109,17 @@ function ManageEvent() {
           <TabsTrigger value="details">Details</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="participants" className="mt-8 flex flex-col gap-12">
-          <AddParticipants code={event.code} />
-          <div className="flex flex-col gap-3">
-            {attendees.length > 0 && (
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">{describeEmailSummary(summary)}</p>
+        <TabsContent value="participants" className="mt-8 flex flex-col gap-6">
+          {attendees.length === 0 ? (
+            <AddParticipants code={event.code} />
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">{describeEmailSummary(summary)}</p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setAddOpen(true)}>
+                  <PlusIcon />
+                  Add participants
+                </Button>
                 {nothingToDo ? (
                   <Tooltip>
                     <TooltipTrigger render={<span tabIndex={0} />}>
@@ -119,16 +133,27 @@ function ManageEvent() {
                   </Button>
                 )}
               </div>
-            )}
-            <AttendeeTable
-              code={event.code}
-              attendees={attendees}
-              event={event}
-              logoUrl={logoUrl}
-              origin={origin}
-              now={now}
-            />
-          </div>
+            </div>
+          )}
+          <AttendeeTable
+            code={event.code}
+            attendees={attendees}
+            event={event}
+            logoUrl={logoUrl}
+            origin={origin}
+            now={now}
+          />
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>Add participants</DialogTitle>
+                <DialogDescription>
+                  Import a spreadsheet or paste JSON. Anyone already in this event is skipped.
+                </DialogDescription>
+              </DialogHeader>
+              <AddParticipants code={event.code} onImported={() => setAddOpen(false)} />
+            </DialogContent>
+          </Dialog>
           {sendOpen && (
             <Suspense fallback={null}>
               <SendBadgesDialog

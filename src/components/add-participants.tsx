@@ -12,7 +12,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -40,7 +39,7 @@ const SAMPLE_ROWS = [
   ["Sally", "Smith", "sally@smith.com"],
 ];
 
-export function AddParticipants({ code }: { code: string }) {
+export function AddParticipants({ code, onImported }: { code: string; onImported?: () => void }) {
   const router = useRouter();
   const [parsed, setParsed] = useState<ParsedAttendees | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -113,6 +112,7 @@ export function AddParticipants({ code }: { code: string }) {
       setParsed(null);
       setJson("");
       await router.invalidate();
+      onImported?.();
     } catch (err) {
       toast.error(
         hasErrorName(err, "ForbiddenError", "NotFoundError")
@@ -222,8 +222,6 @@ export function AddParticipants({ code }: { code: string }) {
           {parsed.duplicates === 1 ? "was" : "were"} skipped.
         </p>
       )}
-
-      <Separator />
 
       <Dialog open={previewOpen} onOpenChange={(open) => !importing && setPreviewOpen(open)}>
         <DialogContent className="sm:max-w-xl">
