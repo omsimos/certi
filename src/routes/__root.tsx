@@ -12,9 +12,13 @@ import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { themeScript } from "@/lib/theme";
+import { getSessionFn } from "@/server/fns";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
+  // Lets the server render know the session; Infinity keeps it across navigations until router.invalidate().
+  loader: () => getSessionFn(),
+  staleTime: Infinity,
   head: () => ({
     meta: [
       { charSet: "utf-8" },

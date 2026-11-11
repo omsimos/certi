@@ -1,63 +1,66 @@
-import { ClientOnly, createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useRef, useState } from "react";
 
-import { FindEventDialog } from "@/components/find-event-dialog";
-import RetroGrid from "@/components/magicui/retro-grid";
-import type { BadgeCardData } from "@/lib/badge/layout";
+import { Delivery } from "@/components/landing/delivery";
+import { Exports } from "@/components/landing/exports";
+import { Footer } from "@/components/landing/footer";
+import { Hero } from "@/components/landing/hero";
+import { Manifesto } from "@/components/landing/manifesto";
+import { OpenSource } from "@/components/landing/open-source";
+import { Showcase } from "@/components/landing/showcase";
+import { Templates } from "@/components/landing/templates";
+import { TryIt } from "@/components/landing/try-it";
+import { useLandingMotion } from "@/components/landing/use-landing-motion";
+import { useGlowZone, usePointerGlow } from "@/components/landing/use-pointer-glow";
+import { type BadgeControl, createBadgeControl, STILL_POSE } from "@/lib/badge/pose";
 import { DEFAULT_ACCENT } from "@/lib/badge/templates";
+import landingCss from "@/styles/landing.css?url";
 
-const HoloBadge = lazy(() =>
-  import("@/components/badge/holo-badge").then((m) => ({ default: m.HoloBadge })),
-);
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [{ title: "Certi — event badges that catch the light" }],
+    links: [
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap",
+      },
+      { rel: "stylesheet", href: landingCss },
+    ],
+  }),
+  staticData: { hideNavbar: true },
+  component: Landing,
+});
 
-export const Route = createFileRoute("/")({ component: Home });
-
-const demoCard: Omit<BadgeCardData, "badgeUrl"> = {
-  firstName: "Juan",
-  lastName: "Dela Cruz",
-  eventTitle: "DevFest Manila",
-  organizer: "Google Developer Groups",
-  date: "October 25, 2026",
-  attendeeId: "demo000000",
-};
-
-const placeholder = <div className="aspect-[300/430] w-full rounded-xl bg-[#090a0c]" />;
-
-// Client-only, so the QR can point at whichever origin is serving the page.
-function DemoBadge() {
-  return (
-    <Suspense fallback={placeholder}>
-      <HoloBadge
-        template="graphite"
-        accent={DEFAULT_ACCENT}
-        data={{ ...demoCard, badgeUrl: window.location.origin }}
-      />
-    </Suspense>
+function Landing() {
+  const root = useRef<HTMLDivElement>(null);
+  const heroControl = useRef(createBadgeControl());
+  const showControl = useRef(createBadgeControl());
+  // The email picture is a still, so it holds one pose instead of sweeping.
+  const mailControl = useRef<BadgeControl>({ ...createBadgeControl(), driver: () => STILL_POSE });
+  const heroFx = useGlowZone();
+  const tryFx = useGlowZone();
+  usePointerGlow([heroFx, tryFx]);
+  const [accent, setAccent] = useState(DEFAULT_ACCENT);
+  const [heroBackend, setHeroBackend] = useState<"webgpu" | "flat" | null>(null);
+  useLandingMotion(
+    root,
+    { hero: heroControl, show: showControl, mail: mailControl },
+    heroBackend === "webgpu",
   );
-}
 
-function Home() {
   return (
-    <main className="container flex h-full min-h-screen flex-col items-center gap-6 pt-36 md:gap-8">
-      <div className="flex flex-col items-center gap-2 border-b border-muted/60 pb-6 md:pb-8">
-        <h1 className="bg-zinc-800 bg-clip-text text-center text-[10vw] leading-none font-extrabold tracking-tighter text-transparent md:text-7xl dark:bg-linear-to-b dark:from-foreground dark:to-zinc-400">
-          Effortlessly create and email holographic badges for your events
-        </h1>
-      </div>
-
-      <p className="max-w-2xl text-center text-muted-foreground md:text-xl">
-        Whether it&apos;s a workshop, seminar, conference, or any other gathering,{" "}
-        <span className="font-medium text-foreground">Certi</span> streamlines the process, saving
-        you time and effort.
-      </p>
-
-      <FindEventDialog />
-      <div className="w-full max-w-xs pb-16">
-        <ClientOnly fallback={placeholder}>
-          <DemoBadge />
-        </ClientOnly>
-      </div>
-      <RetroGrid className="absolute -bottom-64 -z-10 [mask-image:radial-gradient(ellipse_at_bottom,white,transparent_80%)]" />
-    </main>
+    // `dark` keeps the badge's own fallback text readable whatever the app theme is.
+    <div ref={root} className="landing dark">
+      <div className="grain" aria-hidden="true" />
+      <Hero control={heroControl} fx={heroFx} onBadgeBackend={setHeroBackend} />
+      <Manifesto />
+      <Showcase control={showControl} />
+      <Templates accent={accent} onAccent={setAccent} />
+      <Delivery mailControl={mailControl} />
+      <Exports />
+      <OpenSource />
+      <TryIt accent={accent} fx={tryFx} />
+      <Footer />
+    </div>
   );
 }

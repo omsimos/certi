@@ -26,11 +26,7 @@ export const eventInputSchema = z.object({
     .trim()
     .min(2, "Title must be at least 2 characters")
     .max(60, "Title must be at most 60 characters"),
-  description: z
-    .string()
-    .trim()
-    .min(25, "Description must be at least 25 characters")
-    .max(250, "Description must be at most 250 characters"),
+  description: z.string().trim().max(250, "Description must be at most 250 characters"),
   organizer: z
     .string()
     .trim()

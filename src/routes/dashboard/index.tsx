@@ -12,6 +12,13 @@ export const Route = createFileRoute("/dashboard/")({
   component: Dashboard,
 });
 
+const plural = (n: number) => `${n} participant${n === 1 ? "" : "s"}`;
+
+function progressLabel(participants: number, toSend: number) {
+  if (participants === 0) return "No participants yet";
+  return `${plural(participants)} · ${toSend === 0 ? "All sent" : `${toSend} to send`}`;
+}
+
 function Dashboard() {
   const events = Route.useLoaderData();
 
@@ -57,6 +64,9 @@ function Dashboard() {
                     <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                       <CalendarIcon className="size-3.5" aria-hidden />
                       {formatEventDate(event.date)}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {progressLabel(event.participants, event.toSend)}
                     </p>
                   </CardHeader>
                 </Card>

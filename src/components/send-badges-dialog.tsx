@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { EmailPreview } from "@/components/email-preview";
 import type { Attendee } from "@/db/schema";
 import {
   type EmailEvent,
@@ -62,6 +63,7 @@ export function SendBadgesDialog({
   const [summary, setSummary] = useState<SendSummary | null>(null);
   const [renderFailures, setRenderFailures] = useState(0);
   const [refreshed, setRefreshed] = useState(0);
+  const [showPreview, setShowPreview] = useState(false);
   // Fixed when a run starts: the attendee list refreshes under the dialog as it goes.
   const [ranRefreshOnly, setRanRefreshOnly] = useState(false);
   const abort = useRef<AbortController | null>(null);
@@ -140,7 +142,7 @@ export function SendBadgesDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className={showPreview ? "sm:max-w-2xl" : undefined}>
         <DialogHeader>
           <DialogTitle>
             {(phase === "choose" ? refreshOnly : ranRefreshOnly)
@@ -194,6 +196,35 @@ export function SendBadgesDialog({
               </span>
             </label>
           </fieldset>
+        )}
+
+        {phase === "choose" && toSend.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={() => setShowPreview((v) => !v)}
+            >
+              {showPreview ? "Hide preview" : "Preview email"}
+            </Button>
+            {showPreview && gpu !== null && (
+              <>
+                <EmailPreview
+                  key={mode}
+                  mode={mode}
+                  event={event}
+                  logoUrl={logoUrl}
+                  attendee={toSend[0]}
+                  origin={origin}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Showing {toSend[0].firstName} {toSend[0].lastName}. Everyone gets their own name
+                  and badge.
+                </p>
+              </>
+            )}
+          </div>
         )}
 
         {phase === "rendering" && (

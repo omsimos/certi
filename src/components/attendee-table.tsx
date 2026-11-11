@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
-import { LinkIcon, Trash2Icon } from "lucide-react";
-import { useState } from "react";
+import { LinkIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -13,7 +13,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { EditParticipantDialog } from "@/components/edit-participant-dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { SendRow } from "@/components/send-badges-dialog";
 import {
   Table,
@@ -28,11 +37,23 @@ import type { Attendee } from "@/db/schema";
 import { isStaleVersionError, renderEmailImages } from "@/lib/badge/render-email-images";
 import type { EmailEvent } from "@/lib/badge/render-email-images";
 import { probeWebGPU } from "@/lib/badge/webgpu-support";
+import { filterAttendees } from "@/lib/attendee-filter";
+import type { AttendeeFilter } from "@/lib/attendee-filter";
 import { hasErrorName } from "@/lib/errors";
-import { effectiveEmailStatus } from "@/lib/email-status";
+import { effectiveEmailStatus, rowSendAction } from "@/lib/email-status";
 import { describeSendSummary, formatShortDate, imageIsCurrent } from "@/lib/email-summary";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { sendAllBadges } from "@/lib/send-badges-client";
 import { deleteAttendeeFn } from "@/server/fns";
+
+const FILTER_ITEMS: { value: AttendeeFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "not_sent", label: "Not sent" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "sent", label: "Sent" },
+  { value: "failed", label: "Failed" },
+  { value: "outdated", label: "Image out of date" },
+];
 
 type Row = SendRow & Pick<Attendee, "email" | "emailError" | "emailSentAt">;
 
@@ -56,6 +77,14 @@ function StatusCell({ row, now }: { row: Row; now: Date }) {
   return <span className="text-muted-foreground">Not sent</span>;
 }
 
+function confirmDescription(row: Row, now: Date) {
+  if (effectiveEmailStatus(row, now) === "scheduled") {
+    return `Their badge email is scheduled for ${row.emailScheduledFor ? formatShortDate(row.emailScheduledFor) : "later"}. This cancels it and sends a new one in the next free slot.`;
+  }
+  const at = row.emailSentAt ?? row.emailScheduledFor;
+  return `They were sent their badge${at ? ` on ${formatShortDate(at)}` : ""}. They'll get a second email.`;
+}
+
 export function AttendeeTable({
   code,
   attendees,
@@ -74,7 +103,16 @@ export function AttendeeTable({
   const router = useRouter();
   const [pending, setPending] = useState<Row | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [confirming, setConfirming] = useState<Row | null>(null);
+  const [editing, setEditing] = useState<Row | null>(null);
+  const [, copy] = useCopyToClipboard();
   const [resending, setResending] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<AttendeeFilter>("all");
+  const visible = useMemo(
+    () => filterAttendees(attendees, { query, status }, event.updatedAt, now),
+    [attendees, query, status, event.updatedAt, now],
+  );
 
   async function resend(attendee: Row) {
     setResending(attendee.id);
@@ -114,13 +152,8 @@ export function AttendeeTable({
   }
 
   async function copyLink(attendee: Row) {
-    const url = `${location.origin}/event/${code}/badge/${attendee.id}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Badge link copied");
-    } catch {
-      toast.error("Could not copy the link");
-    }
+    const ok = await copy(`${origin}/event/${code}/badge/${attendee.id}`);
+    (ok ? toast.success : toast.error)(ok ? "Badge link copied" : "Could not copy the link");
   }
 
   async function confirmDelete() {
@@ -145,7 +178,14 @@ export function AttendeeTable({
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-lg font-medium">
-        Participants <span className="text-muted-foreground">({attendees.length})</span>
+        Participants{" "}
+        <span className="text-muted-foreground">
+          (
+          {visible.length === attendees.length
+            ? attendees.length
+            : `${visible.length} of ${attendees.length}`}
+          )
+        </span>
       </h2>
 
       {attendees.length === 0 ? (
@@ -153,68 +193,162 @@ export function AttendeeTable({
           No participants yet. Import a spreadsheet or paste JSON above.
         </p>
       ) : (
-        <div className="rounded-xl border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-44 text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {attendees.map((a) => (
-                <TableRow key={a.id}>
-                  <TableCell className="font-medium">
-                    {a.firstName} {a.lastName}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{a.email}</TableCell>
-                  <TableCell className="text-sm">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusCell row={a} now={now} />
-                      {a.badgeImageVersion && !imageIsCurrent(a, event.updatedAt) && (
-                        <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
-                          Image out of date
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              type="search"
+              placeholder="Search name or email"
+              aria-label="Search participants"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="max-w-xs"
+            />
+            <Select
+              items={FILTER_ITEMS}
+              value={status}
+              onValueChange={(v) => setStatus(v as AttendeeFilter)}
+            >
+              <SelectTrigger aria-label="Filter by status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FILTER_ITEMS.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="rounded-xl border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-52 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visible.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="py-8 text-center text-sm text-muted-foreground"
+                    >
+                      No participants match.{" "}
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => resend(a)}
-                        disabled={resending !== null}
-                        aria-label={`Resend badge to ${a.firstName} ${a.lastName}`}
+                        onClick={() => {
+                          setQuery("");
+                          setStatus("all");
+                        }}
                       >
-                        {resending === a.id ? "Sending..." : "Resend"}
+                        Clear filters
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => copyLink(a)}
-                        aria-label={`Copy badge link for ${a.firstName} ${a.lastName}`}
-                      >
-                        <LinkIcon />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => setPending(a)}
-                        aria-label={`Delete ${a.firstName} ${a.lastName}`}
-                      >
-                        <Trash2Icon />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+                {visible.map((a) => {
+                  const action = rowSendAction(effectiveEmailStatus(a, now));
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell className="font-medium">
+                        {a.firstName} {a.lastName}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{a.email}</TableCell>
+                      <TableCell className="text-sm">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <StatusCell row={a} now={now} />
+                          {a.badgeImageVersion && !imageIsCurrent(a, event.updatedAt) && (
+                            <span className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+                              Image out of date
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => (action.confirm ? setConfirming(a) : resend(a))}
+                            disabled={resending !== null}
+                            aria-label={`${action.label} badge to ${a.firstName} ${a.lastName}`}
+                          >
+                            {resending === a.id ? "Sending..." : action.label}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => setEditing(a)}
+                            aria-label={`Edit ${a.firstName} ${a.lastName}`}
+                          >
+                            <PencilIcon />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => copyLink(a)}
+                            aria-label={`Copy badge link for ${a.firstName} ${a.lastName}`}
+                          >
+                            <LinkIcon />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => setPending(a)}
+                            aria-label={`Delete ${a.firstName} ${a.lastName}`}
+                          >
+                            <Trash2Icon />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
+
+      {editing && (
+        <EditParticipantDialog
+          key={editing.id}
+          code={code}
+          attendee={editing}
+          open
+          onOpenChange={(open) => !open && setEditing(null)}
+        />
+      )}
+
+      <AlertDialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirming && `Email ${confirming.firstName} ${confirming.lastName} again?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirming && confirmDescription(confirming, now)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const row = confirming;
+                setConfirming(null);
+                if (row) void resend(row);
+              }}
+            >
+              Send again
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={pending !== null} onOpenChange={(open) => !open && setPending(null)}>
         <AlertDialogContent>

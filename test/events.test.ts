@@ -1,7 +1,15 @@
 import { env } from "cloudflare:workers";
+import { eq } from "drizzle-orm";
+import { nanoid } from "nanoid";
 import { describe, expect, it } from "vitest";
 import { getDb } from "../src/db";
-import { EventCodeTakenError, ForbiddenError, NotFoundError } from "../src/lib/errors";
+import { attendee, event as eventTable } from "../src/db/schema";
+import {
+  EventCodeTakenError,
+  EventHasScheduledEmailsError,
+  ForbiddenError,
+  NotFoundError,
+} from "../src/lib/errors";
 import {
   eventCodeSchema,
   eventInputSchema,
@@ -10,13 +18,15 @@ import {
 } from "../src/lib/schemas";
 import {
   createEvent,
+  deleteEvent,
   getEventByCode,
   getOwnedEvent,
-  listEventsByOwner,
+  listEventSummariesByOwner,
   toPublicEvent,
   updateEvent,
 } from "../src/server/events";
-import { createTestUser } from "./helpers";
+import { summarizeEmails } from "../src/lib/email-summary";
+import { createTestEvent, createTestUser } from "./helpers";
 
 const db = getDb(env.DB);
 
@@ -123,7 +133,7 @@ describe("events", () => {
     // workerd freezes the clock between I/O, so force distinct createdAt values.
     await new Promise((r) => setTimeout(r, 5));
     const second = await createEvent(db, a.id, makeInput());
-    const list = await listEventsByOwner(db, a.id);
+    const list = await listEventSummariesByOwner(db, a.id);
     expect(list.map((e) => e.id)).toEqual([second.id, first.id]);
   });
 
@@ -162,8 +172,9 @@ describe("events", () => {
     expect(parse({ title: "ab" })).toBe(true);
     expect(parse({ title: "a".repeat(60) })).toBe(true);
     expect(parse({ title: "a".repeat(61) })).toBe(false);
-    expect(parse({ description: "a".repeat(24) })).toBe(false);
-    expect(parse({ description: "a".repeat(25) })).toBe(true);
+    expect(parse({ description: "" })).toBe(true);
+    expect(parse({ description: "a".repeat(250) })).toBe(true);
+    expect(parse({ description: "a".repeat(251) })).toBe(false);
     expect(parse({ organizer: "a".repeat(40) })).toBe(true);
     expect(parse({ organizer: "a".repeat(41) })).toBe(false);
   });
@@ -182,5 +193,146 @@ describe("events", () => {
     const created = await createEvent(db, a.id, stray);
     expect(created.ownerId).toBe(a.id);
     expect(created.id).not.toBe("forced-id");
+  });
+});
+
+describe("deleteEvent", () => {
+  const now = new Date("2026-06-01T12:00:00Z");
+  const day = 24 * 60 * 60_000;
+
+  async function seed(overrides: Partial<typeof attendee.$inferInsert> = {}, logoKey?: string) {
+    const owner = await createTestUser(db);
+    const ev = await createTestEvent(db, owner.id, { logoKey });
+    const id = nanoid();
+    await db.insert(attendee).values({
+      id,
+      eventId: ev.id,
+      firstName: "A",
+      lastName: "B",
+      email: `${id.toLowerCase()}@example.com`,
+      ...overrides,
+    });
+    return { owner, ev, id };
+  }
+
+  const remaining = async (ev: { id: string }) => ({
+    events: await db.select().from(eventTable).where(eq(eventTable.id, ev.id)),
+    attendees: await db.select().from(attendee).where(eq(attendee.eventId, ev.id)),
+  });
+
+  it("deletes the event and its attendees", async () => {
+    const { owner, ev } = await seed();
+    await deleteEvent(db, env.BUCKET, owner.id, ev.code, { now });
+    const left = await remaining(ev);
+    expect(left.events).toEqual([]);
+    expect(left.attendees).toEqual([]);
+  });
+
+  it("removes the logo and badge image objects", async () => {
+    const tag = nanoid();
+    const logoKey = `logos/${tag}.png`;
+    const badgeKey = `badges/v1/${tag}/1.jpg`;
+    await env.BUCKET.put(logoKey, "logo");
+    await env.BUCKET.put(badgeKey, "badge");
+    const { owner, ev } = await seed({ badgeImageKey: badgeKey }, logoKey);
+    await deleteEvent(db, env.BUCKET, owner.id, ev.code, { now });
+    expect(await env.BUCKET.head(logoKey)).toBeNull();
+    expect(await env.BUCKET.head(badgeKey)).toBeNull();
+  });
+
+  it("refuses while an email is scheduled for later", async () => {
+    const { owner, ev } = await seed({
+      emailStatus: "scheduled",
+      emailScheduledFor: new Date(now.getTime() + day),
+      resendId: "re_1",
+    });
+    await expect(deleteEvent(db, env.BUCKET, owner.id, ev.code, { now })).rejects.toBeInstanceOf(
+      EventHasScheduledEmailsError,
+    );
+    const left = await remaining(ev);
+    expect(left.events).toHaveLength(1);
+    expect(left.attendees).toHaveLength(1);
+  });
+
+  it("allows when the scheduled email has already gone out", async () => {
+    const { owner, ev } = await seed({
+      emailStatus: "scheduled",
+      emailScheduledFor: new Date(now.getTime() - day),
+      resendId: "re_1",
+    });
+    await deleteEvent(db, env.BUCKET, owner.id, ev.code, { now });
+    expect((await remaining(ev)).events).toEqual([]);
+  });
+
+  it("refuses on a fresh claim", async () => {
+    const { owner, ev } = await seed({ emailStatus: "scheduled", emailClaimedAt: now });
+    await expect(deleteEvent(db, env.BUCKET, owner.id, ev.code, { now })).rejects.toBeInstanceOf(
+      EventHasScheduledEmailsError,
+    );
+    expect((await remaining(ev)).events).toHaveLength(1);
+  });
+
+  it("rejects another owner and unknown codes", async () => {
+    const { ev } = await seed();
+    const other = await createTestUser(db);
+    await expect(deleteEvent(db, env.BUCKET, other.id, ev.code, { now })).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
+    await expect(
+      deleteEvent(db, env.BUCKET, other.id, "no-such-event", { now }),
+    ).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
+
+describe("listEventSummariesByOwner", () => {
+  it("counts participants and badges still to send", async () => {
+    const owner = await createTestUser(db);
+    const empty = await createTestEvent(db, owner.id);
+    const ev = await createTestEvent(db, owner.id);
+    const now = new Date();
+    const rows: Partial<typeof attendee.$inferInsert>[] = [
+      { emailStatus: "not_sent" },
+      { emailStatus: "failed" },
+      { emailStatus: "sent" },
+      {
+        emailStatus: "scheduled",
+        resendId: "re_1",
+        emailScheduledFor: new Date(now.getTime() + 86_400_000),
+      },
+      { emailStatus: "scheduled", emailClaimedAt: now },
+      { emailStatus: "scheduled", emailClaimedAt: new Date(now.getTime() - 11 * 60_000) },
+    ];
+    for (const overrides of rows) {
+      const id = nanoid();
+      await db.insert(attendee).values({
+        id,
+        eventId: ev.id,
+        firstName: "A",
+        lastName: "B",
+        email: `${id.toLowerCase()}@example.com`,
+        ...overrides,
+      });
+    }
+
+    const list = await listEventSummariesByOwner(db, owner.id, now);
+    expect(list.find((e) => e.id === empty.id)).toMatchObject({ participants: 0, toSend: 0 });
+    const item = list.find((e) => e.id === ev.id);
+    expect(item).toMatchObject({ participants: 6, toSend: 3 });
+
+    // The event page's Send badges button counts the same rows.
+    const stored = await db.select().from(attendee).where(eq(attendee.eventId, ev.id));
+    const summary = summarizeEmails(stored, ev.updatedAt, now);
+    expect(item?.toSend).toBe(summary.notSent + summary.failed);
+  });
+
+  it("excludes other owners' events and orders newest first", async () => {
+    const [a, b] = [await createTestUser(db), await createTestUser(db)];
+    const first = await createTestEvent(db, a.id);
+    await createTestEvent(db, b.id);
+    // workerd freezes the clock between I/O, so force distinct createdAt values.
+    await new Promise((r) => setTimeout(r, 5));
+    const second = await createTestEvent(db, a.id, { createdAt: new Date(Date.now() + 5) });
+    const list = await listEventSummariesByOwner(db, a.id);
+    expect(list.map((e) => e.id)).toEqual([second.id, first.id]);
   });
 });

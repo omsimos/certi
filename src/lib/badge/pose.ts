@@ -12,6 +12,27 @@ export const STILL_POSE: Pose = {
   hover: 0.85,
 };
 
+// Lets a caller (e.g. scroll animation) steer a live badge without re-rendering it.
+export type BadgeControl = {
+  // Added to the tilt; multiplies the hover.
+  offset: { tiltX: number; tiltY: number; hover: number };
+  // When set, replaces the pointer/idle-sweep pose.
+  driver: (() => Pose) | null;
+};
+
+export const createBadgeControl = (): BadgeControl => ({
+  offset: { tiltX: 0, tiltY: 0, hover: 1 },
+  driver: null,
+});
+
+export function applyOffset(p: Pose, o: BadgeControl["offset"]): Pose {
+  return {
+    tilt: [p.tilt[0] + o.tiltX, p.tilt[1] + o.tiltY],
+    pointer: p.pointer,
+    hover: p.hover * o.hover,
+  };
+}
+
 const clamp1 = (v: number) => Math.max(-1, Math.min(1, v));
 
 export function poseFromPointer(x: number, y: number, hover: number): Pose {

@@ -3,9 +3,20 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { getDb } from "../src/db";
 import { attendee } from "../src/db/schema";
-import { ForbiddenError, NotFoundError, ScheduledEmailCancelError } from "../src/lib/errors";
+import {
+  AttendeeEmailTakenError,
+  ForbiddenError,
+  NotFoundError,
+  ScheduledEmailCancelError,
+} from "../src/lib/errors";
 import type { AttendeeInput } from "../src/lib/schemas";
-import { deleteAttendee, getBadge, importAttendees, listAttendees } from "../src/server/attendees";
+import {
+  deleteAttendee,
+  getBadge,
+  importAttendees,
+  listAttendees,
+  updateAttendee,
+} from "../src/server/attendees";
 import { UNKNOWN_RESEND_ID } from "../src/server/email/client";
 import { createTestEvent, createTestUser } from "./helpers";
 
@@ -237,5 +248,155 @@ describe("attendees", () => {
     const ana = (await listAttendees(db, a.id, ev2.code)).find((r) => r.email === "ana@x.com")!;
     expect(await getBadge(db, ev.code, ana.id)).toBeNull();
     expect(await getBadge(db, ev.code, "nope")).toBeNull();
+  });
+});
+
+describe("updateAttendee", () => {
+  async function seeded() {
+    const a = await createTestUser(db);
+    const b = await createTestUser(db);
+    const ev = await createTestEvent(db, a.id);
+    await importAttendees(db, a.id, ev.code, two);
+    const ana = (await listAttendees(db, a.id, ev.code)).find((r) => r.email === "ana@x.com")!;
+    const ana2 = { firstName: "Ana", lastName: "Cruz" };
+    return { a, b, ev, ana, ana2 };
+  }
+  const row = (id: string) => db.select().from(attendee).where(eq(attendee.id, id)).get();
+
+  it("changes a name, clears the image version and leaves the email status alone", async () => {
+    const { a, ev, ana } = await seeded();
+    await db
+      .update(attendee)
+      .set({ emailStatus: "sent", emailSentAt: new Date(), badgeImageVersion: new Date() })
+      .where(eq(attendee.id, ana.id));
+    const updated = await updateAttendee(db, a.id, ev.code, ana.id, {
+      firstName: "Anna",
+      lastName: "Cruz",
+      email: "ana@x.com",
+    });
+    expect(updated.firstName).toBe("Anna");
+    expect(updated.badgeImageVersion).toBeNull();
+    expect(updated.emailStatus).toBe("sent");
+    expect(updated.emailSentAt).not.toBeNull();
+  });
+
+  it("returns the row unchanged when nothing differs", async () => {
+    const { a, ev, ana, ana2 } = await seeded();
+    const updated = await updateAttendee(db, a.id, ev.code, ana.id, { ...ana2, email: ana.email });
+    expect(updated).toEqual(ana);
+  });
+
+  it("resets a sent row to not_sent when the email changes", async () => {
+    const { a, ev, ana, ana2 } = await seeded();
+    await db
+      .update(attendee)
+      .set({ emailStatus: "sent", emailSentAt: new Date(), resendId: "re_9" })
+      .where(eq(attendee.id, ana.id));
+    const cancel = vi.fn(async () => {});
+    const updated = await updateAttendee(
+      db,
+      a.id,
+      ev.code,
+      ana.id,
+      { ...ana2, email: "new@x.com" },
+      { cancel },
+    );
+    expect(updated.email).toBe("new@x.com");
+    expect(updated.emailStatus).toBe("not_sent");
+    expect(updated.emailSentAt).toBeNull();
+    expect(updated.resendId).toBeNull();
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  async function schedule(id: string, resendId: string | null) {
+    await db
+      .update(attendee)
+      .set({
+        emailStatus: "scheduled",
+        emailScheduledFor: new Date(Date.now() + 3_600_000),
+        emailClaimedAt: new Date(),
+        resendId,
+      })
+      .where(eq(attendee.id, id));
+  }
+
+  it("cancels a future scheduled email when the email changes", async () => {
+    const { a, ev, ana, ana2 } = await seeded();
+    await schedule(ana.id, "re_1");
+    const cancel = vi.fn(async () => {});
+    const updated = await updateAttendee(
+      db,
+      a.id,
+      ev.code,
+      ana.id,
+      { ...ana2, email: "new@x.com" },
+      { cancel },
+    );
+    expect(cancel).toHaveBeenCalledWith("re_1");
+    expect(updated.emailStatus).toBe("not_sent");
+    expect(updated.emailScheduledFor).toBeNull();
+    expect(updated.resendId).toBeNull();
+  });
+
+  it("keeps the row when the cancel fails", async () => {
+    const { a, ev, ana, ana2 } = await seeded();
+    await schedule(ana.id, "re_1");
+    const cancel = vi.fn(async () => {
+      throw new Error("Resend is down");
+    });
+    await expect(
+      updateAttendee(db, a.id, ev.code, ana.id, { ...ana2, email: "new@x.com" }, { cancel }),
+    ).rejects.toBeInstanceOf(ScheduledEmailCancelError);
+    const after = await row(ana.id);
+    expect(after?.email).toBe("ana@x.com");
+    expect(after?.emailStatus).toBe("scheduled");
+    expect(after?.resendId).toBe("re_1");
+  });
+
+  it("refuses an email change when the Resend id is unknown, without cancelling", async () => {
+    const { a, ev, ana, ana2 } = await seeded();
+    await schedule(ana.id, UNKNOWN_RESEND_ID);
+    const cancel = vi.fn(async () => {});
+    await expect(
+      updateAttendee(db, a.id, ev.code, ana.id, { ...ana2, email: "new@x.com" }, { cancel }),
+    ).rejects.toBeInstanceOf(ScheduledEmailCancelError);
+    expect(cancel).not.toHaveBeenCalled();
+    expect((await row(ana.id))?.email).toBe("ana@x.com");
+  });
+
+  it("refuses an email change while a send is in flight", async () => {
+    const { a, ev, ana, ana2 } = await seeded();
+    await schedule(ana.id, null);
+    await expect(
+      updateAttendee(db, a.id, ev.code, ana.id, { ...ana2, email: "new@x.com" }),
+    ).rejects.toMatchObject({ name: "ValidationError" });
+  });
+
+  it("rejects a duplicate email in the same event but allows one in another event", async () => {
+    const { a, ev, ana, ana2 } = await seeded();
+    await expect(
+      updateAttendee(db, a.id, ev.code, ana.id, { ...ana2, email: "ben@x.com" }),
+    ).rejects.toBeInstanceOf(AttendeeEmailTakenError);
+
+    const ev2 = await createTestEvent(db, a.id);
+    await importAttendees(db, a.id, ev2.code, [
+      { firstName: "Cy", lastName: "Dee", email: "cy@x.com" },
+    ]);
+    const updated = await updateAttendee(db, a.id, ev.code, ana.id, {
+      ...ana2,
+      email: "cy@x.com",
+    });
+    expect(updated.email).toBe("cy@x.com");
+  });
+
+  it("rejects another owner and unknown ids", async () => {
+    const { a, b, ev, ana, ana2 } = await seeded();
+    const input = { ...ana2, email: "ana@x.com" };
+    await expect(updateAttendee(db, b.id, ev.code, ana.id, input)).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
+    await expect(updateAttendee(db, a.id, ev.code, "nope", input)).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
   });
 });
